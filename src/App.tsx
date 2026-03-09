@@ -2,7 +2,7 @@
 //import viteLogo from '/vite.svg'
 import './App.css'
 import * as React from 'react'
-import {useState, type FC} from 'react'
+import {useState, type FC, useEffect} from 'react'
 import {AnimatePresence, motion} from 'framer-motion';
 import type {Pannelprops} from "./props.tsx";
 
@@ -54,6 +54,15 @@ const AuthPanel:FC<Pannelprops&{authMode:boolean}> = ({isOpen,onClose,authMode})
     const [tel,setTel] = useState("");
     const [isMerchant,setIsMerchant] = useState(false);
 
+    useEffect(() => {
+        if (isOpen) {
+            setMode(authMode);
+            setIdentifier("");
+            setPassword("");
+            setTel("");
+            setIsMerchant(false);
+        }
+    }, [isOpen, authMode]);
 
     const handleSubmitL = async (e:React.BaseSyntheticEvent)=>{
         e.preventDefault();
