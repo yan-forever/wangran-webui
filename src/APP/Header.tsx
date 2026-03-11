@@ -26,6 +26,7 @@ function Header() {
                         <span className="h-2 w-2 rounded-full bg-indigo-500 ml-0.5 mb-1 group-hover:scale-125 transition-transform"></span>
                     </div>
                     <div className="flex items-center gap-3">
+                        /* TODO搜索系统 */
                         {isAuthenticated?(<>
                             <button
                                 onClick={() => {
@@ -40,6 +41,7 @@ function Header() {
                                 className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
                                 我的
                             </button></>):
+                            /* TODO”我的“分级菜单 */
                         (<>
                             <button
                             onClick={() => {
@@ -64,9 +66,9 @@ function Header() {
         </>
     )
 }
-const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, authMode }) => {
+const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, authMode }) => {//TODO探究不同形式react组件创建的差异
     return (
-        <AnimatePresence>
+        <AnimatePresence>//TODO理解遮罩控件的原理
             {isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -147,7 +149,7 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                 <p className="mt-2 text-sm text-zinc-400">立即订票！</p>
             </div>
 
-            {mode ? (
+            {mode ? (//TODO 输入信息错误时ui变红提示
                 /* ----------------- 登录表单 ----------------- */
                 <form className="space-y-5" onSubmit={handleSubmitL}>
                     <div>

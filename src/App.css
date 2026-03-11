@@ -5,3 +5,4 @@
         @apply hover:bg-zinc-700 hover:border-zinc-600 active:scale-95 select-none cursor-pointer;
     }
 }
+/*TODO 风格化tailwind全局组件*/

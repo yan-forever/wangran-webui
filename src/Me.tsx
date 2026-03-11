@@ -9,7 +9,7 @@ function Me(){
     const [writeName,setWriteName]=useState(false);
     const [writeTel,setWriteTel]=useState(false);
     const [newUsername,setNewUsername]=useState<string>(username||"加载中");
-    const [newPassword,setNewPassword]=useState("");
+    const [newPassword,setNewPassword]=useState("");//TODO 修改密码
     const [newPhoneNumber,setNewPhoneNumber]=useState<string>(phoneNumber||"加载中");
     useEffect(()=>{
         if(id=="undefined") {
@@ -38,6 +38,7 @@ function Me(){
         const patchData = {
             [mode]: newData //ES6 动态键名
         };
+        //TODO 校验修改的合法性
         try
         {
             const response = await request.patch(`/users/${id}`, patchData)
@@ -48,7 +49,7 @@ function Me(){
             console.error(error);
         }
     }
-
+    //TODO 输入信息错误时ui变红提示
     return (
         <>
             <div className="flex flex-col w-full min-h-screen p-4">
@@ -92,6 +93,7 @@ function Me(){
                                     >
                                         {writeName ? "保存" : "修改"}
                                     </button>
+                                    /*TODO商户信息的展示 */
                                 </div>
                             </div>
                             <div className="h-px w-full bg-zinc-800/50"></div>
