@@ -5,11 +5,13 @@ import {AnimatePresence, motion} from 'framer-motion';
 import type {Pannelprops} from "../Utils/interface.tsx";
 import request from "../Utils/request.ts";
 import {useAuth} from "../AuthContext.tsx";
+import { useNavigate } from 'react-router-dom';
 
 function Header() {
     const [isAuthPanel,setAuthPanel] = useState(false);
     const [authMode,setAuthMode] = useState(false);
     const {isAuthenticated,logout} = useAuth();
+    const navigate = useNavigate();
     return (
         <>
             <header className="sticky top-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/10">
@@ -24,11 +26,20 @@ function Header() {
                         <span className="h-2 w-2 rounded-full bg-indigo-500 ml-0.5 mb-1 group-hover:scale-125 transition-transform"></span>
                     </div>
                     <div className="flex items-center gap-3">
-                        {isAuthenticated?(<button
-                            onClick={() => logout()}
-                            className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
-                            退出登录
-                        </button>):
+                        {isAuthenticated?(<>
+                            <button
+                                onClick={() => {
+                                    logout();
+                                    navigate('/');
+                                }}
+                                className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
+                                退出登录
+                            </button>
+                            <button
+                                onClick={() => navigate('/Me')}
+                                className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
+                                我的
+                            </button></>):
                         (<>
                             <button
                             onClick={() => {
@@ -45,8 +56,7 @@ function Header() {
                             }}
                             className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black transition-all duration-200 hover:bg-gray-200 shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95">
                             注册
-                        </button>
-                            </>)}
+                        </button></>)}
                     </div>
                 </div>
             </header>
@@ -98,7 +108,7 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
     const [password, setPassword] = useState("");
     const [tel, setTel] = useState("");
     const [isMerchant, setIsMerchant] = useState(false);
-    const {login,logout}=useAuth();
+    const {login}=useAuth();
     const handleSubmitL = async (e:React.BaseSyntheticEvent)=>{
         e.preventDefault();
         if (identifier.length>50) return console.log("登录用户标识过长");
@@ -108,9 +118,7 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                 identifier:identifier,
                 password:password,
             })
-            const token = response.data.data.token;
-            console.log("传递之前 Token:", token);
-            login(token);
+            login(response.data.token,response.data.account);
             onClose();
         }catch (error){
             console.error('错误：',error);

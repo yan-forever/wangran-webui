@@ -1,15 +1,29 @@
-//import reactLogo from './assets/react.svg'
-//import viteLogo from '/vite.svg'
 import './App.css'
-import Header from "./APP/Header.tsx";
 import {AuthProvider} from "./AuthContext.tsx";
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Me from "./Me.tsx";
+import Header from "./APP/Header.tsx";
 
 function App() {
     return (
-        <AuthProvider>
-            <Header></Header>
+        <BrowserRouter>
+            <AuthProvider>
+                <div className="flex flex-col bg-gray-950 min-h-screen w-full">
+                    <Header/>
 
-        </AuthProvider>
+                    <Routes>
+                        <Route path="/" element={<Home/>}/>
+                        <Route path="/me" element={<Me/>}/>
+                    </Routes>
+                </div>
+            </AuthProvider>
+
+        </BrowserRouter>
+    )
+}
+function Home() {
+    return (
+        <></>
     )
 }
 export default App
