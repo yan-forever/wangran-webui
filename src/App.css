@@ -1,8 +1,17 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @layer components {
     .btn {
         @apply rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200;
         @apply hover:bg-zinc-700 hover:border-zinc-600 active:scale-95 select-none cursor-pointer;
+    }
+
+    .audit-card {
+        @apply w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-[2rem] shadow-2xl relative overflow-hidden;
+    }
+
+    .audit-card::before {
+        content: '';
+        @apply absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-indigo-500 to-violet-600;
     }
 }
 /*TODO 风格化tailwind全局组件*/

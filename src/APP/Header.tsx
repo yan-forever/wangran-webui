@@ -1,74 +1,167 @@
-import '../App.css'
-import * as React from 'react'
-import {useState, type FC, useEffect} from 'react'
-import {AnimatePresence, motion} from 'framer-motion';
-import type {Pannelprops} from "../Utils/interface.tsx";
-import request from "../Utils/request.ts";
-import {useAuth} from "../AuthContext.tsx";
+import '../App.css';
+import * as React from 'react';
+import { type FC, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import type { Pannelprops } from '../Utils/interface.tsx';
+import request from '../Utils/request.ts';
+import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 
 function Header() {
-    const [isAuthPanel,setAuthPanel] = useState(false);
-    const [authMode,setAuthMode] = useState(false);
-    const {isAuthenticated,logout} = useAuth();
+    const [isAuthPanel, setAuthPanel] = useState(false);
+    const [authMode, setAuthMode] = useState(false);
+    const { isAuthenticated, logout, role } = useAuth();
     const navigate = useNavigate();
+    const [isMenuOpen, setMenuOpen] = useState(false);
     return (
         <>
-            <header className="sticky top-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/10">
+            <header className="relative top-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/10">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-baseline gap-1.5 cursor-pointer group select-none">
-                        <span className="text-2xl font-black tracking-tight text-white group-hover:text-gray-200 transition-colors">
-                          望冉
-                        </span>
+                        <button
+                            onClick={() => navigate('/')}
+                            className="text-2xl font-black tracking-tight text-white group-hover:text-gray-200 transition-colors"
+                        >
+                            望冉
+                        </button>
                         <span className="bg-linear-to-br from-indigo-400 to-violet-500 bg-clip-text text-lg font-extrabold text-transparent">
-                          webui
+                            webui
                         </span>
                         <span className="h-2 w-2 rounded-full bg-indigo-500 ml-0.5 mb-1 group-hover:scale-125 transition-transform"></span>
                     </div>
                     <div className="flex items-center gap-3">
-                        /* TODO搜索系统 */
-                        {isAuthenticated?(<>
-                            <button
-                                onClick={() => {
-                                    logout();
-                                    navigate('/');
-                                }}
-                                className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
-                                退出登录
-                            </button>
-                            <button
-                                onClick={() => navigate('/Me')}
-                                className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
-                                我的
-                            </button></>):
-                            /* TODO”我的“分级菜单 */
-                        (<>
-                            <button
-                            onClick={() => {
-                                setAuthMode(true);
-                                setAuthPanel(true);
-                            }}
-                            className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95">
-                            登录
-                        </button>
+                        {/* TODO搜索系统 */}
                         <button
-                            onClick={()=> {
-                                setAuthMode(false);
-                                setAuthPanel(true);
+                            onClick={() => {
+                                const testc = localStorage.getItem('merchantCode');
+                                console.log(testc);
                             }}
-                            className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black transition-all duration-200 hover:bg-gray-200 shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95">
-                            注册
-                        </button></>)}
+                            className="btn"
+                        >
+                            测试
+                        </button>
+
+                        {isAuthenticated ? (
+                            <>
+                                <div className="relative inline-block text-left">
+                                    <button
+                                        onClick={() => setMenuOpen(!isMenuOpen)}
+                                        className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95 flex items-center gap-1.5"
+                                    >
+                                        我的
+                                        <svg
+                                            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`}
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M19 9l-7 7-7-7"
+                                            />
+                                        </svg>
+                                    </button>
+                                    <AnimatePresence>
+                                        {isMenuOpen && (
+                                            <>
+                                                <div
+                                                    className="fixed inset-0 z-40"
+                                                    onClick={() => setMenuOpen(false)}
+                                                ></div>
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                    className="absolute right-0 mt-2 w-48 rounded-2xl bg-zinc-900/90 backdrop-blur-xl border border-zinc-700 shadow-2xl z-50 py-2 origin-top-right"
+                                                >
+                                                    <button
+                                                        onClick={() => {
+                                                            navigate('/Me');
+                                                            setMenuOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                                                    >
+                                                        个人中心
+                                                    </button>
+
+                                                    <div className="h-px w-full bg-zinc-800 my-1"></div>
+
+                                                    <div className="group relative w-full">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (role === 'admin')
+                                                                    navigate('/console/admin');
+                                                                if (role === 'merchant')
+                                                                    navigate('/console/merchant');
+                                                                if (role == 'user')
+                                                                    navigate('/console/user');
+                                                                setMenuOpen(false);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex justify-between items-center"
+                                                        >
+                                                            {role == 'user' ? '订单' : '控制台'}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="h-px w-full bg-zinc-800 my-1"></div>
+
+                                                    <button
+                                                        onClick={() => {
+                                                            logout();
+                                                            navigate('/');
+                                                            setMenuOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex justify-between items-center text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                                    >
+                                                        退出登录
+                                                    </button>
+                                                </motion.div>
+                                            </>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setAuthMode(true);
+                                        setAuthPanel(true);
+                                    }}
+                                    className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95"
+                                >
+                                    登录
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setAuthMode(false);
+                                        setAuthPanel(true);
+                                    }}
+                                    className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black transition-all duration-200 hover:bg-gray-200 shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95"
+                                >
+                                    注册
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
-            <AuthPanel isOpen={isAuthPanel} onClose={()=>setAuthPanel(false)} authMode={authMode} />
+            <AuthPanel
+                isOpen={isAuthPanel}
+                onClose={() => setAuthPanel(false)}
+                authMode={authMode}
+            />
         </>
-    )
+    );
 }
-const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, authMode }) => {//TODO探究不同形式react组件创建的差异
+const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, authMode }) => {
+    //TODO探究不同形式react组件创建的差异
     return (
-        <AnimatePresence>//TODO理解遮罩控件的原理
+        <AnimatePresence>
+            //TODO理解遮罩控件的原理
             {isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -81,7 +174,7 @@ const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, a
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                        transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
                         className="relative w-full max-w-md overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -93,8 +186,18 @@ const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, a
                             onClick={onClose}
                             className="absolute right-4 top-6 text-zinc-500 hover:text-white transition-colors cursor-pointer"
                         >
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
                             </svg>
                         </button>
                     </motion.div>
@@ -104,56 +207,61 @@ const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, a
     );
 };
 
-const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ initialMode, onClose }) => {
+const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({
+    initialMode,
+    onClose,
+}) => {
     const [mode, setMode] = useState(initialMode);
-    const [identifier, setIdentifier] = useState("");
-    const [password, setPassword] = useState("");
-    const [tel, setTel] = useState("");
+    const [identifier, setIdentifier] = useState('');
+    const [password, setPassword] = useState('');
+    const [tel, setTel] = useState('');
     const [isMerchant, setIsMerchant] = useState(false);
-    const {login}=useAuth();
-    const handleSubmitL = async (e:React.BaseSyntheticEvent)=>{
+    const { login } = useAuth();
+    const handleSubmitL = async (e: React.BaseSyntheticEvent) => {
         e.preventDefault();
-        if (identifier.length>50) return console.log("登录用户标识过长");
-        if (password.length<6||password.length>50) return console.log("登录密码过长或过短");
-        try{
-            const response = await request.post('/auth/login',{
-                identifier:identifier,
-                password:password,
-            })
-            login(response.data.token,response.data.account);
+        if (identifier.length > 50) return console.log('登录用户标识过长');
+        if (password.length < 6 || password.length > 50) return console.log('登录密码过长或过短');
+        try {
+            const response = await request.post('/auth/login', {
+                identifier: identifier,
+                password: password,
+            });
+            if (response.data) login(response.data.token, response.data.account);
             onClose();
-        }catch (error){
-            console.error('错误：',error);
+        } catch (error) {
+            console.error('错误：', error);
         }
-    }
+    };
 
     const handleSubmitR = async (e: React.BaseSyntheticEvent) => {
         e.preventDefault();
-        if(tel.length<11) return console.log("手机号错误")
-        if(password.length<6) return console.log("密码位数不足");
-        try{
-            const response = await request.post('/auth/register',{
-                phoneNumber:tel,
-                password:password,
-                merchant:isMerchant
-            })
-            onClose()
-        }catch (error){
-            console.error('错误',error);
+        if (tel.length < 11) return console.log('手机号错误');
+        if (password.length < 6) return console.log('密码位数不足');
+        try {
+            const response = await request.post('/auth/register', {
+                phoneNumber: tel,
+                password: password,
+                merchant: isMerchant,
+            });
+            onClose();
+        } catch (error) {
+            console.error('错误', error);
         }
     };
     return (
         <div className="px-8 py-10">
             <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-white">{mode ? "望冉" : "加入望冉"}</h2>
+                <h2 className="text-2xl font-bold text-white">{mode ? '望冉' : '加入望冉'}</h2>
                 <p className="mt-2 text-sm text-zinc-400">立即订票！</p>
             </div>
 
-            {mode ? (//TODO 输入信息错误时ui变红提示
+            {mode ? ( //TODO 输入信息错误时ui变红提示
                 /* ----------------- 登录表单 ----------------- */
                 <form className="space-y-5" onSubmit={handleSubmitL}>
                     <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">手机号或商户编号</label>
+                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                            手机号或商户编号
+                        </label>
                         <input
                             type="text"
                             placeholder="your account identifier"
@@ -163,7 +271,9 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                         />
                     </div>
                     <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">密码</label>
+                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                            密码
+                        </label>
                         <input
                             type="password"
                             placeholder="••••••••"
@@ -172,7 +282,10 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                             className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                         />
                     </div>
-                    <button type="submit" className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]">
+                    <button
+                        type="submit"
+                        className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]"
+                    >
                         立即登陆
                     </button>
                 </form>
@@ -180,7 +293,9 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                 /* ----------------- 注册表单 ----------------- */
                 <form className="space-y-5" onSubmit={handleSubmitR}>
                     <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">手机号</label>
+                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                            手机号
+                        </label>
                         <input
                             type="tel"
                             placeholder="your phone number"
@@ -190,7 +305,9 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                         />
                     </div>
                     <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">设置密码</label>
+                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                            设置密码
+                        </label>
                         <input
                             type="password"
                             placeholder="••••••••"
@@ -200,45 +317,54 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({ in
                         />
                     </div>
                     <div className="flex items-center gap-3">
-                        <label className="relative flex items-center cursor-pointer select-none gap-3" htmlFor="ismerchant">
+                        <label
+                            className="relative flex items-center cursor-pointer select-none gap-3"
+                            htmlFor="ismerchant"
+                        >
                             <input
                                 type="checkbox"
                                 id="ismerchant"
                                 checked={isMerchant}
-                                onChange={(e)=> setIsMerchant(e.target.checked)}
+                                onChange={(e) => setIsMerchant(e.target.checked)}
                                 className="peer sr-only"
                             />
                             <span className="flex items-center justify-center w-5 h-5 border border-zinc-800 bg-zinc-900 rounded-lg transition-all duration-200 ease-out peer-checked:bg-indigo-600 peer-checked:border-indigo-600 peer-checked:shadow-[0_0_10px_rgba(99,102,241,0.5)]">
-                                        <svg
-                                            className="w-3 h-3 text-white transition-transform duration-200 ease-out scale-0 peer-checked:scale-100"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <polyline points="20 6 9 17 4 12" />
-                                        </svg>
-                                    </span>
+                                <svg
+                                    className="w-3 h-3 text-white transition-transform duration-200 ease-out scale-0 peer-checked:scale-100"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </span>
                             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-white transition-colors">
-                                        注册为商户
-                                    </span>
+                                注册为商户
+                            </span>
                         </label>
                     </div>
-                    <button type="submit" className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]">
+                    <button
+                        type="submit"
+                        className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]"
+                    >
                         立即创建账号
                     </button>
                 </form>
             )}
 
             <div className="mt-8 text-center text-sm text-zinc-500">
-                {mode ? "没有账户？" : "已有账号？"}
-                <button onClick={() => setMode(!mode)} className="ml-1 font-semibold text-indigo-400 hover:text-indigo-300">
-                    {mode ? "去注册" : "去登录"}
+                {mode ? '没有账户？' : '已有账号？'}
+                <button
+                    onClick={() => setMode(!mode)}
+                    className="ml-1 font-semibold text-indigo-400 hover:text-indigo-300"
+                >
+                    {mode ? '去注册' : '去登录'}
                 </button>
             </div>
         </div>
     );
 };
-export default Header
+export default Header;

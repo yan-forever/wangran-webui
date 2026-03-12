@@ -1,58 +1,115 @@
-import type {account, AuthContextType} from "./Utils/interface.tsx";
-import {createContext, type ReactNode, useContext, useState} from "react";
+import type { AuthContextType, Merchant, User } from './Utils/interface.tsx';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 
-const AuthContext = createContext<AuthContextType|undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }:{children: ReactNode}) =>{
-    const [token,setToken] = useState<string|null>(() => localStorage.getItem('token'));
-    const [id,setId] = useState<string|null>(() => localStorage.getItem('id'));
-    const [username,setUserName] = useState<string|null>(() => localStorage.getItem('username'));
-    const [phoneNumber,setPhoneNumber] = useState<string|null>(() => localStorage.getItem('phoneNumber'));
-    const login = (newToken: string|null,account:account) => {
-        if(newToken!=null&&account.id!=null&&account.username!=null&&account.phoneNumber!=null){
-            setToken(newToken);
-            setId(account.id);
-            setUserName(account.username);
-            setPhoneNumber(account.phoneNumber);
-            localStorage.setItem('token',newToken);
-            localStorage.setItem('id',account.id);
-            localStorage.setItem('username',account.username);
-            localStorage.setItem('phoneNumber',account.phoneNumber);
-        }else{
-            console.error("有值为空");
-            console.log('token',newToken);
-            console.log('id',account.id);
-            console.log('name',account.username);
-            console.log('phoneNumber',account.phoneNumber);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [role, setRole] = useState<'guest' | 'user' | 'merchant' | 'admin'>(
+        () => (localStorage.getItem('role') as never) || 'guest',
+    );
+    const [token, setToken] = useState(() => localStorage.getItem('token'));
+    const [id, setId] = useState(() => localStorage.getItem('id'));
+    const [username, setUsername] = useState(() => localStorage.getItem('username'));
+    const [phoneNumber, setPhoneNumber] = useState(() => localStorage.getItem('phoneNumber'));
+    const [merchantCode, setMerchantCode] = useState(() => localStorage.getItem('merchantCode'));
+    const [approvalStatus, setApprovalStatus] = useState(() =>
+        localStorage.getItem('approvalStatus'),
+    );
+    const [rejectReason, setRejectReason] = useState(() => localStorage.getItem('rejectReason'));
+    const login = (newToken: string | null, account: User | Merchant | null) => {
+        if (account) {
+            if ('merchantCode' in account) {
+                setRole('merchant');
+                setToken(newToken);
+                setId(account.id);
+                setUsername(account.username);
+                setPhoneNumber(account.phoneNumber);
+                setMerchantCode(account.merchantCode);
+                setApprovalStatus(account.approvalStatus);
+                setRejectReason(account.rejectReason || '');
+
+                localStorage.setItem('role', 'merchant');
+                if (newToken) localStorage.setItem('token', newToken);
+                localStorage.setItem('id', account.id!);
+                localStorage.setItem('username', account.username!);
+                localStorage.setItem('phoneNumber', account.phoneNumber!);
+                localStorage.setItem('merchantCode', account.merchantCode!);
+                localStorage.setItem('approvalStatus', account.approvalStatus!);
+                localStorage.setItem('rejectReason', account.rejectReason || '');
+            } else if (account.id) {
+                setRole('user');
+                setToken(newToken);
+                setId(account.id);
+                setUsername(account.username);
+                setPhoneNumber(account.phoneNumber);
+                setMerchantCode(null);
+                setApprovalStatus(null);
+                setRejectReason(null);
+
+                localStorage.setItem('role', 'user');
+                if (newToken) localStorage.setItem('token', newToken);
+                localStorage.setItem('id', account.id);
+                localStorage.setItem('username', account.username!);
+                localStorage.setItem('phoneNumber', account.phoneNumber!);
+                localStorage.removeItem('merchantCode');
+                localStorage.removeItem('approvalStatus');
+                localStorage.removeItem('rejectReason');
+            }
+        } else {
+            console.log('管理员登录');
+            if (newToken) {
+                setRole('admin');
+                setToken(newToken);
+                setId('0');
+                localStorage.setItem('role', 'admin');
+                localStorage.setItem('token', newToken);
+                localStorage.setItem('id', '0');
+            }
         }
-    }
+    };
+
     const logout = () => {
+        setRole('guest');
         setToken(null);
         setId(null);
-        setUserName(null);
+        setUsername(null);
         setPhoneNumber(null);
+        setApprovalStatus(null);
+        setMerchantCode(null);
+        setRejectReason(null);
+
+        localStorage.removeItem('role');
         localStorage.removeItem('token');
         localStorage.removeItem('id');
         localStorage.removeItem('username');
         localStorage.removeItem('phoneNumber');
-    }
+        localStorage.removeItem('merchantCode');
+        localStorage.removeItem('approvalStatus');
+        localStorage.removeItem('rejectReason');
+    };
     const isAuthenticated = !!token;
     return (
-        <AuthContext.Provider value={{
-            token,
-            id,
-            username,
-            phoneNumber,
-            login,
-            logout,
-            isAuthenticated,
-        }}>
+        <AuthContext.Provider
+            value={{
+                role,
+                token,
+                id,
+                username,
+                phoneNumber,
+                merchantCode,
+                approvalStatus,
+                rejectReason,
+                login,
+                logout,
+                isAuthenticated,
+            }}
+        >
             {children}
         </AuthContext.Provider>
-    )
-}
+    );
+};
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if(!context) throw new Error('useAuth 必须在 Auth内部使用');
+    if (!context) throw new Error('useAuth 必须在 Auth内部使用');
     return context;
-}
+};
