@@ -14,4 +14,19 @@
         @apply absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-indigo-500 to-violet-600;
     }
 }
+@layer base {
+    html {
+        color-scheme: dark;
+    }
+
+    /* 如果你想顺便把所有日历图标稍微调暗一点，也可以全局写在这里 */
+    ::-webkit-calendar-picker-indicator {
+        opacity: 0.5;
+        cursor: pointer;
+    }
+
+    ::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+}
 /*TODO 风格化tailwind全局组件*/

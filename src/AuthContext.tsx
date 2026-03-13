@@ -18,7 +18,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [rejectReason, setRejectReason] = useState(() => localStorage.getItem('rejectReason'));
     const login = (newToken: string | null, account: User | Merchant | null) => {
         if (account) {
-            if ('merchantCode' in account) {
+            if ('merchantCode' in account && newToken) {
+                console.log('商户登陆');
                 setRole('merchant');
                 setToken(newToken);
                 setId(account.id);
@@ -29,14 +30,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setRejectReason(account.rejectReason || '');
 
                 localStorage.setItem('role', 'merchant');
-                if (newToken) localStorage.setItem('token', newToken);
+                localStorage.setItem('token', newToken);
                 localStorage.setItem('id', account.id!);
                 localStorage.setItem('username', account.username!);
                 localStorage.setItem('phoneNumber', account.phoneNumber!);
                 localStorage.setItem('merchantCode', account.merchantCode!);
                 localStorage.setItem('approvalStatus', account.approvalStatus!);
                 localStorage.setItem('rejectReason', account.rejectReason || '');
-            } else if (account.id) {
+            } else if (account.id && newToken) {
                 setRole('user');
                 setToken(newToken);
                 setId(account.id);
@@ -47,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setRejectReason(null);
 
                 localStorage.setItem('role', 'user');
-                if (newToken) localStorage.setItem('token', newToken);
+                localStorage.setItem('token', newToken);
                 localStorage.setItem('id', account.id);
                 localStorage.setItem('username', account.username!);
                 localStorage.setItem('phoneNumber', account.phoneNumber!);

@@ -20,3 +20,25 @@ export interface Merchant extends User {
     approvalStatus: string | null;
     rejectReason: string | null;
 }
+
+export interface EventsData {
+    id?: string | null;
+    eventCode?: string | null;
+    eventName: string | null;
+    eventType: string | null;
+    eventTime: string | null;
+    city: string | null;
+    price: number | null;
+    stock: number | null;
+    onShelf?: string | null;
+    saleStartTime: string | null;
+    saleEndTime: string | null;
+    organizers: number[] | null;
+}
+
+export interface Organizer {
+    id: string | null;
+    name: string | null;
+    phoneNumber: string | null;
+    address: string | null;
+}

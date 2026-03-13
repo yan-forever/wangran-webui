@@ -1,24 +1,40 @@
 import { useEffect, useState } from 'react';
-import request from '../Utils/request.ts';
+import request from '../Utils/requestDeal.ts';
 import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 
 function AdminConsole() {
-    const [merchantPhoneNumber, setMerchantPhoneNumber] = useState<string>();
-    const [approved, setApproved] = useState<string>();
-    const [rejectReason, setRejectReason] = useState<string>();
+    const [merchantPhoneNumber, setMerchantPhoneNumber] = useState<string>('');
+    const [approved, setApproved] = useState<string>('');
+    const [rejectReason, setRejectReason] = useState<string>('');
     const { role, logout } = useAuth();
     const navigate = useNavigate();
-    const handleReview = async () => {
+    const [organizer, setOrganizer] = useState({
+        name: '',
+        phoneNumber: '',
+        address: '',
+    });
+    const merchantsReview = async () => {
         const response = await request.post('/merchants/review', {
             merchantPhoneNumber: merchantPhoneNumber,
             approved: approved,
             rejectReason: rejectReason,
         });
-        console.log('merchants/review:', response);
         setMerchantPhoneNumber('');
         setApproved('');
         setApproved('');
+    };
+    const createOrganizer = async () => {
+        const response = await request.post('/organizers', {
+            name: organizer.name,
+            phoneNumber: organizer.phoneNumber,
+            address: organizer.address,
+        });
+        setOrganizer({
+            name: '',
+            phoneNumber: '',
+            address: '',
+        });
     };
     useEffect(() => {
         if (role != 'admin') {
@@ -35,7 +51,6 @@ function AdminConsole() {
                         <h2 className="text-2xl font-bold text-white">商户入驻审核</h2>
                         <p className="mt-2 text-sm text-zinc-400">请核对商户信息并给出审核结论</p>
                     </div>
-
                     <div className="space-y-6">
                         <div>
                             <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -96,11 +111,83 @@ function AdminConsole() {
 
                         <button
                             type="button"
-                            onClick={() => handleReview()}
+                            onClick={() => merchantsReview()}
                             disabled={!approved || !merchantPhoneNumber}
                             className="group relative w-full overflow-hidden rounded-xl bg-white py-4 font-black text-black transition-all hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-30"
                         >
                             确认提交审核
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div className="audit-card">
+                <div className="p-8">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-white">创建主办方</h2>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                主办方名称
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="xxx"
+                                value={organizer.name || ''}
+                                onChange={(e) =>
+                                    setOrganizer((prev) => ({
+                                        ...prev,
+                                        name: e.target.value,
+                                    }))
+                                }
+                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                主办方联系电话
+                            </label>
+                            <input
+                                type="tel"
+                                placeholder="phoneNumber"
+                                value={organizer.phoneNumber || ''}
+                                onChange={(e) =>
+                                    setOrganizer((prev) => ({
+                                        ...prev,
+                                        phoneNumber: e.target.value,
+                                    }))
+                                }
+                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                主办方地址
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="address"
+                                value={organizer.address || ''}
+                                onChange={(e) =>
+                                    setOrganizer((prev) => ({
+                                        ...prev,
+                                        address: e.target.value,
+                                    }))
+                                }
+                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => createOrganizer()}
+                            disabled={
+                                organizer.name === '' ||
+                                organizer.phoneNumber == '' ||
+                                organizer.address == ''
+                            }
+                            className="group relative w-full overflow-hidden rounded-xl bg-white py-4 font-black text-black transition-all hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-30"
+                        >
+                            确认创建
                         </button>
                     </div>
                 </div>

@@ -3,9 +3,11 @@ import * as React from 'react';
 import { type FC, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Pannelprops } from '../Utils/interface.tsx';
-import request from '../Utils/request.ts';
+import request from '../Utils/requestDeal.ts';
 import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
+import useHeartCheck from '../Utils/heartCheck.ts';
+import { getEvents } from '../Utils/request.ts';
 
 function Header() {
     const [isAuthPanel, setAuthPanel] = useState(false);
@@ -13,6 +15,7 @@ function Header() {
     const { isAuthenticated, logout, role } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setMenuOpen] = useState(false);
+    const serverState = useHeartCheck();
     return (
         <>
             <header className="relative top-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/10">
@@ -27,14 +30,20 @@ function Header() {
                         <span className="bg-linear-to-br from-indigo-400 to-violet-500 bg-clip-text text-lg font-extrabold text-transparent">
                             webui
                         </span>
-                        <span className="h-2 w-2 rounded-full bg-indigo-500 ml-0.5 mb-1 group-hover:scale-125 transition-transform"></span>
+                        <span
+                            className={`h-2 w-2 rounded-full ml-0.5 mb-1 animate-pulse transition-colors duration-300 ${
+                                serverState
+                                    ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]' // 在线：靛蓝色 + 发光
+                                    : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' // 离线：红色 + 发光
+                            }`}
+                            title={serverState ? '服务运行正常' : '服务已断开连接'}
+                        ></span>
                     </div>
                     <div className="flex items-center gap-3">
                         {/* TODO搜索系统 */}
                         <button
                             onClick={() => {
-                                const testc = localStorage.getItem('merchantCode');
-                                console.log(testc);
+                                getEvents();
                             }}
                             className="btn"
                         >

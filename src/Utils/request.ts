@@ -1,36 +1,34 @@
-import axios from 'axios';
+//未来集中request
 
-const request = axios.create({
-    baseURL: '/api',
-    timeout: 5000,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-request.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token && token !== 'undefined' && token !== 'null') {
-            // 拼接 Bearer 前缀，符合 JWT 标准
-            config.headers['Authorization'] = `Bearer ${token}`;
-            console.log('token is ', token);
-        } else {
-            console.log('token is null!!');
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    },
-);
-request.interceptors.response.use(
-    (response) => {
-        console.log('成功', Object.freeze({ ...response.data }));
-        return response.data;
-    },
-    (error) => {
-        console.error('后端响应出错:', { ...error });
-        return Promise.reject(error);
-    },
-);
-export default request;
+import type { EventsData, Organizer } from './interface.tsx';
+import request from './requestDeal.ts';
+
+export const getOrganizers = async (
+    page: number = 1,
+    pageSize: number = 10,
+): Promise<Organizer[]> => {
+    const response = await request.get('/organizers', {
+        params: {
+            page: page,
+            pageSize: pageSize,
+        },
+    });
+    return response.data.data;
+};
+
+export const getEvents = async (page: number = 1, pageSize: number = 10): Promise<EventsData[]> => {
+    const response = await request.get('/events', {
+        params: {
+            page: page,
+            pageSize: pageSize,
+        },
+    });
+    console.log(response.data.data);
+    return response.data.data;
+};
+
+export const updataEvent = async (event: EventsData) => {
+    const response = await request.patch(`/events/${event.id}`, {
+        body: JSON.stringify(event),
+    });
+};
