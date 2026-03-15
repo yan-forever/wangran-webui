@@ -1,5 +1,5 @@
 import type { AuthContextType, Merchant, User } from './Utils/interface.tsx';
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setRole('guest');
         setToken(null);
         setId(null);
@@ -87,7 +87,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('merchantCode');
         localStorage.removeItem('approvalStatus');
         localStorage.removeItem('rejectReason');
-    };
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(logout, 3600000);
+        return () => clearTimeout(timer);
+    }, [logout, token]);
+
     const isAuthenticated = !!token;
     return (
         <AuthContext.Provider

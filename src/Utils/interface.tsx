@@ -42,3 +42,13 @@ export interface Organizer {
     phoneNumber: string | null;
     address: string | null;
 }
+
+export interface MerchantOrders {
+    id: string | null;
+    ticketCode: string | null;
+    refunded: boolean;
+    userId: number | null;
+    eventId: number | null;
+    createTime: string | null;
+    eventObject: EventsData;
+}

@@ -49,13 +49,28 @@ export const createEvent = async (event: EventsData) => {
     return request.post('/events', payload);
 };
 
-export const upDataEvent = async (event: EventsData) => {
-    const { id, eventCode, ...rest } = event;
-    const payload = {
-        ...rest,
-        eventTime: formatToInstant(rest.eventTime),
-        saleStartTime: formatToInstant(rest.saleStartTime),
-        saleEndTime: formatToInstant(rest.saleEndTime),
-    };
+export const upDataEvent = async (
+    id: string,
+    event: Partial<Omit<EventsData, 'id' | 'eventCode'>>,
+) => {
+    const rest = event;
+    const payload: Partial<EventsData> = { ...rest };
+
+    if ('eventTime' in rest) {
+        payload.eventTime = formatToInstant(rest.eventTime ?? null);
+    }
+
+    if ('saleStartTime' in rest) {
+        payload.saleStartTime = formatToInstant(rest.saleStartTime ?? null);
+    }
+
+    if ('saleEndTime' in rest) {
+        payload.saleEndTime = formatToInstant(rest.saleEndTime ?? null);
+    }
+
     return request.patch(`/events/${id}`, payload);
+};
+
+export const deleteEvent = async (id: string) => {
+    return request.delete(`/events/${id}`);
 };

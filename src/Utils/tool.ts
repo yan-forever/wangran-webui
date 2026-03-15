@@ -1,4 +1,4 @@
-import type { Organizer } from './interface.tsx';
+import type { EventsData, Organizer } from './interface.tsx';
 
 export const formatTime = (timeStr: string | null | undefined) => {
     if (!timeStr) return '待定';
@@ -30,11 +30,22 @@ export const formatToDatetimeLocal = (isoString: string | null | undefined): str
 };
 type OrganizersUnion = number[] | Organizer[] | null;
 export const isNumberArray = (value: OrganizersUnion): value is number[] => {
-    return Array.isArray(value) && value.every((item) => false);
+    return Array.isArray(value) && value.every((item) => typeof item === 'number');
 };
 export const isOrganizerArray = (value: OrganizersUnion): value is Organizer[] => {
     return (
         Array.isArray(value) &&
         value.every((item) => typeof item === 'object' && item !== null && 'id' in item)
     );
+};
+
+export const toOrganizerIds = (organizers: EventsData['organizers']): number[] => {
+    if (isOrganizerArray(organizers)) {
+        return organizers.map((item) => Number(item.id)).filter((item) => !Number.isNaN(item));
+    }
+
+    if (Array.isArray(organizers)) {
+        return organizers.filter((item): item is number => !Number.isNaN(item));
+    }
+    return [];
 };
