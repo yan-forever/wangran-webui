@@ -2,11 +2,10 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
-import request from '../Utils/requestDeal.ts';
 import type { EventsData, Organizer } from '../Utils/interface.tsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getEvents, getOrganizers } from '../Utils/request.ts';
-import { formatTime } from '../Utils/tool.ts';
+import { createEvent, getEvents, getOrganizers, upDataEvent } from '../Utils/request.ts';
+import { formatTime, isNumberArray } from '../Utils/tool.ts';
 
 function MerchantConsole() {
     const { role, logout } = useAuth();
@@ -58,8 +57,19 @@ function MerchantConsole() {
 function Tickets() {
     const [isCreate, setIsCreate] = useState(false);
     const [events, setEvents] = useState<EventsData[]>([]);
-    const [page, setPage] = useState(1);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [page] = useState(1);
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [preData, setPreData] = useState<EventsData>({
+        eventName: '',
+        eventTime: '',
+        eventType: '',
+        city: '',
+        price: NaN,
+        organizers: [],
+        stock: NaN,
+        saleStartTime: '',
+        saleEndTime: '',
+    });
     useEffect(() => {
         const getData = async () => {
             const response = await getEvents(page, 10);
@@ -67,10 +77,6 @@ function Tickets() {
         };
         getData();
     }, [page]);
-
-    const editEvent = async (e: React.MouseEvent<HTMLButtonElement>) => {
-        setEditingId(e.currentTarget.id);
-    };
 
     return (
         <>
@@ -97,7 +103,18 @@ function Tickets() {
                         创建票务
                     </button>
                 </div>
-                <CreatePanel status={isCreate} onClosed={() => setIsCreate(false)} />
+                <CreateChangePanel
+                    status={isCreate}
+                    onClosed={() => setIsCreate(false)}
+                    toUpData={false}
+                />
+                <CreateChangePanel
+                    key={preData.id || ''}
+                    status={isEditing}
+                    onClosed={() => setIsEditing(false)}
+                    toUpData={true}
+                    upData={preData}
+                />
                 <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 min-h-75">
                     {events.length === 0 ? (
                         <div className="p-4 text-center text-sm text-zinc-500">暂无数据</div>
@@ -113,14 +130,9 @@ function Tickets() {
                                     <div className="flex flex-col gap-2.5">
                                         {/* 标题与标签行 */}
                                         <div className="flex items-center gap-3">
-                                            {editingId == data.id ? (
-                                                <input />
-                                            ) : (
-                                                <h3 className="text-lg font-bold text-zinc-100 group-hover:text-indigo-400 transition-colors">
-                                                    {data.eventName || '未命名票务'}
-                                                </h3>
-                                            )}
-
+                                            <h3 className="text-lg font-bold text-zinc-100 group-hover:text-indigo-400 transition-colors">
+                                                {data.eventName || '未命名票务'}
+                                            </h3>
                                             {/* 票务类型标签 */}
                                             {data.eventType && (
                                                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
@@ -204,8 +216,9 @@ function Tickets() {
                                         <div className="pl-4 border-l border-zinc-800 flex items-center">
                                             <button
                                                 id={data.id || ''}
-                                                onClick={(e) => {
-                                                    editEvent(e);
+                                                onClick={() => {
+                                                    setIsEditing(true);
+                                                    setPreData(data);
                                                 }}
                                                 className="p-2 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all active:scale-95"
                                                 title="编辑票务"
@@ -236,20 +249,32 @@ function Tickets() {
     );
 }
 
-function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => void }) {
+function CreateChangePanel({
+    status,
+    onClosed,
+    toUpData,
+    upData,
+}: {
+    status: boolean;
+    onClosed: () => void;
+    toUpData: boolean;
+    upData?: EventsData;
+}) {
     const [organizerOptions, setOrganizerOptions] = useState<Organizer[]>([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [eventData, setEventData] = useState<EventsData>({
-        eventName: '',
-        eventTime: '',
-        eventType: '',
-        city: '',
-        price: NaN,
-        organizers: [],
-        stock: NaN,
-        saleStartTime: '',
-        saleEndTime: '',
-    });
+    const [eventData, setEventData] = useState<EventsData>(
+        upData ?? {
+            eventName: '',
+            eventTime: '',
+            eventType: '',
+            city: '',
+            price: NaN,
+            organizers: [],
+            stock: NaN,
+            saleStartTime: '',
+            saleEndTime: '',
+        },
+    );
 
     useEffect(() => {
         const getData = async () => {
@@ -259,25 +284,16 @@ function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => vo
         getData();
     }, []);
 
-    const createEvent = async (e: React.SubmitEvent) => {
+    const createChangeEvent = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        if (toUpData) {
+            upDataEvent(eventData);
+            alert('更改成功！');
+        } else {
+            createEvent(eventData);
+            alert('创建成功！');
+        }
 
-        //深拷贝一份数据，准备专门发给后端（不要直接修改原 state）
-        const payload = { ...eventData };
-        const formatToInstant = (timeStr: string | number | null) => {
-            if (!timeStr) return null;
-            // new Date 会自动把本地时间转换成标准的 UTC ISO-8601 格式
-            return new Date(timeStr as string).toISOString();
-        };
-        payload.eventTime = formatToInstant(payload.eventTime as string);
-        payload.saleStartTime = formatToInstant(payload.saleStartTime as string);
-        payload.saleEndTime = formatToInstant(payload.saleEndTime as string);
-        // 4. 发送处理好的 payload，而不是原始的 eventData
-        const response = await request.post(`/events`, payload);
-        console.log('创建成功', response);
-
-        // 5. 体验优化：创建成功后自动关闭弹窗，并清空表单
-        alert('创建成功！');
         onClosed();
         setEventData({
             eventName: '',
@@ -303,20 +319,20 @@ function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => vo
     const toggleOrganizer = (idStr: string | null) => {
         if (!idStr) return;
         const idNum = Number(idStr);
-
         setEventData((prev) => {
-            // 获取当前已选的数组，如果是 null 则默认为空数组 []
-            const currentSelected = prev.organizers || [];
-            let newSelected;
+            let newSelected: number[] = [];
+            if (isNumberArray(prev.organizers)) {
+                const currentSelected = prev.organizers || [];
 
-            if (currentSelected.includes(idNum)) {
-                // 如果已经选中了，就把它过滤掉（取消选中）
-                newSelected = currentSelected.filter((orgId) => orgId !== idNum);
-            } else {
-                // 如果没选中，就把它加进数组（新增选中）
-                newSelected = [...currentSelected, idNum];
+                if (currentSelected.includes(idNum)) {
+                    // 如果已经选中了，就把它过滤掉（取消选中）
+                    newSelected = currentSelected.filter((orgId) => orgId !== idNum);
+                } else {
+                    // 如果没选中，就把它加进数组（新增选中）
+                    newSelected = [...currentSelected, idNum];
+                }
             }
-
+            // 获取当前已选的数组，如果是 null 则默认为空数组 []
             return { ...prev, organizers: newSelected };
         });
     };
@@ -345,11 +361,11 @@ function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => vo
 
                         <div className="px-8 py-10">
                             <h2 className="text-2xl font-bold text-white text-center mb-8">
-                                新建票务信息
+                                {toUpData ? '更新票务信息' : '新建票务信息'}
                             </h2>
                             <form
                                 className="grid grid-cols-2 gap-x-8 gap-y-5"
-                                onSubmit={createEvent}
+                                onSubmit={createChangeEvent}
                             >
                                 <div className="col-span-2">
                                     <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -497,9 +513,12 @@ function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => vo
                                                     ) : (
                                                         organizerOptions.map((data) => {
                                                             const idNum = Number(data.id);
-                                                            const isSelected = (
-                                                                eventData.organizers || []
-                                                            ).includes(idNum);
+                                                            const selectedOrganizers =
+                                                                isNumberArray(eventData.organizers)
+                                                                    ? eventData.organizers
+                                                                    : [];
+                                                            const isSelected =
+                                                                selectedOrganizers.includes(idNum);
 
                                                             return (
                                                                 <div
@@ -571,10 +590,10 @@ function CreatePanel({ status, onClosed }: { status: boolean; onClosed: () => vo
                                 <div className="col-span-2 pt-4">
                                     <button
                                         type="submit"
-                                        onClick={() => createEvent}
+                                        onClick={() => createChangeEvent}
                                         className="w-full py-3 px-6 rounded-xl bg-linear-to-r from-indigo-600 to-violet-700 text-white font-bold hover:from-indigo-500 hover:to-violet-600 transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
                                     >
-                                        发布票务
+                                        {toUpData ? '更新' : '发布票务'}
                                     </button>
                                 </div>
                             </form>

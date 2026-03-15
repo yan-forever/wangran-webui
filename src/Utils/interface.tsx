@@ -30,10 +30,10 @@ export interface EventsData {
     city: string | null;
     price: number | null;
     stock: number | null;
-    onShelf?: string | null;
+    onShelf?: boolean | null;
     saleStartTime: string | null;
     saleEndTime: string | null;
-    organizers: number[] | null;
+    organizers: number[] | Organizer[] | null;
 }
 
 export interface Organizer {

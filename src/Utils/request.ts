@@ -2,6 +2,7 @@
 
 import type { EventsData, Organizer } from './interface.tsx';
 import request from './requestDeal.ts';
+import { formatToDatetimeLocal, formatToInstant, isOrganizerArray } from './tool.ts';
 
 export const getOrganizers = async (
     page: number = 1,
@@ -23,12 +24,38 @@ export const getEvents = async (page: number = 1, pageSize: number = 10): Promis
             pageSize: pageSize,
         },
     });
-    console.log(response.data.data);
-    return response.data.data;
+    return response.data.data.map((event: EventsData) => ({
+        ...event,
+        eventTime: formatToDatetimeLocal(event.eventTime),
+        saleStartTime: formatToDatetimeLocal(event.saleStartTime),
+        saleEndTime: formatToDatetimeLocal(event.saleEndTime),
+        organizers: isOrganizerArray(event.organizers)
+            ? event.organizers
+                  .map((org) => Number(org.id))
+                  .filter((id: number) => !Number.isNaN(id))
+            : [],
+    }));
 };
 
-export const updataEvent = async (event: EventsData) => {
-    const response = await request.patch(`/events/${event.id}`, {
-        body: JSON.stringify(event),
-    });
+export const createEvent = async (event: EventsData) => {
+    const { id, eventCode, ...rest } = event;
+    const payload = {
+        ...rest,
+        eventTime: formatToInstant(rest.eventTime),
+        saleStartTime: formatToInstant(rest.saleStartTime),
+        saleEndTime: formatToInstant(rest.saleEndTime),
+    };
+
+    return request.post('/events', payload);
+};
+
+export const upDataEvent = async (event: EventsData) => {
+    const { id, eventCode, ...rest } = event;
+    const payload = {
+        ...rest,
+        eventTime: formatToInstant(rest.eventTime),
+        saleStartTime: formatToInstant(rest.saleStartTime),
+        saleEndTime: formatToInstant(rest.saleEndTime),
+    };
+    return request.patch(`/events/${id}`, payload);
 };
