@@ -1,6 +1,6 @@
 //未来集中request
 
-import type { EventsData, Organizer } from './interface.tsx';
+import type { EventsData, MerchantOrders, Order, Organizer } from './interface.ts';
 import request from './requestDeal.ts';
 import { formatToDatetimeLocal, formatToInstant, isOrganizerArray } from './tool.ts';
 
@@ -17,7 +17,10 @@ export const getOrganizers = async (
     return response.data.data;
 };
 
-export const getEvents = async (page: number = 1, pageSize: number = 10): Promise<EventsData[]> => {
+export const getMerchantEvents = async (
+    page: number = 1,
+    pageSize: number = 10,
+): Promise<EventsData[]> => {
     const response = await request.get('/events', {
         params: {
             page: page,
@@ -35,6 +38,33 @@ export const getEvents = async (page: number = 1, pageSize: number = 10): Promis
                   .filter((id: number) => !Number.isNaN(id))
             : [],
     }));
+};
+
+export const getPublicEvents = async (
+    eventType?: string,
+    city?: string,
+    startTime?: string,
+    endTime?: string,
+    page?: number,
+    pageSize?: number,
+): Promise<EventsData[]> => {
+    const response = await request.get('/events/public', {
+        params: {
+            eventType: eventType,
+            city: city,
+            startTime: startTime,
+            endTime: endTime,
+            page: page,
+            pageSize: pageSize,
+        },
+    });
+    return response.data.data;
+};
+
+export const bookEvent = async (eventId: string) => {
+    return request.post(`/orders`, {
+        eventId: eventId,
+    });
 };
 
 export const createEvent = async (event: EventsData) => {
@@ -73,4 +103,38 @@ export const upDataEvent = async (
 
 export const deleteEvent = async (id: string) => {
     return request.delete(`/events/${id}`);
+};
+
+export const getMerchantOrders = async (
+    page?: number,
+    pageSize?: number,
+    refunded?: boolean | null,
+): Promise<MerchantOrders[]> => {
+    const response = await request.get('/orders/merchant', {
+        params: {
+            page: page,
+            pageSize: pageSize,
+            refunded: refunded,
+        },
+    });
+    return response.data.data;
+};
+
+export const getOrders = async (
+    page?: number,
+    pageSize?: number,
+    refunded?: boolean,
+): Promise<Order[]> => {
+    const response = await request.get('/orders', {
+        params: {
+            page: page,
+            pageSize: pageSize,
+            refunded: refunded,
+        },
+    });
+    return response.data.data;
+};
+
+export const refundOrder = async (id: string) => {
+    return request.post(`/orders/${id}/refund`);
 };
