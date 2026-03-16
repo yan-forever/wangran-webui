@@ -33,6 +33,7 @@ export interface EventsData {
     onShelf?: boolean | null;
     saleStartTime: string | null;
     saleEndTime: string | null;
+    merchantId?: string | null;
     organizers: number[] | Organizer[] | null;
 }
 
@@ -44,6 +45,16 @@ export interface Organizer {
 }
 
 export interface MerchantOrders {
+    id: string | null;
+    ticketCode: string | null;
+    refunded: boolean;
+    userId: number | null;
+    eventId: number | null;
+    createTime: string | null;
+    eventObject: EventsData;
+}
+
+export interface Order {
     id: string | null;
     ticketCode: string | null;
     refunded: boolean;

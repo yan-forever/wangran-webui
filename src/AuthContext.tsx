@@ -1,4 +1,4 @@
-import type { AuthContextType, Merchant, User } from './Utils/interface.tsx';
+import type { AuthContextType, Merchant, User } from './Utils/interface.ts';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -1,4 +1,4 @@
-import type { EventsData, Organizer } from './interface.tsx';
+import type { EventsData, Organizer } from './interface.ts';
 
 export const formatTime = (timeStr: string | null | undefined) => {
     if (!timeStr) return '待定';

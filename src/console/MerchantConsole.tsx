@@ -2,12 +2,13 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
-import type { EventsData, Organizer } from '../Utils/interface.tsx';
+import type { EventsData, MerchantOrders, Organizer } from '../Utils/interface.ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     createEvent,
     deleteEvent,
-    getEvents,
+    getMerchantEvents,
+    getMerchantOrders,
     getOrganizers,
     upDataEvent,
 } from '../Utils/request.ts';
@@ -22,6 +23,7 @@ const emptyEventData: EventsData = {
     price: null,
     organizers: [],
     stock: null,
+    onShelf: false,
     saleStartTime: '',
     saleEndTime: '',
 };
@@ -66,7 +68,7 @@ function MerchantConsole() {
             <main className="flex-1 p-8 overflow-y-auto">
                 <div className="max-w-4xl mx-auto">
                     {activeTab === 'tickets' && <Tickets />}
-                    {activeTab === 'orders' && <div className="text-white">订单组件占位</div>}
+                    {activeTab === 'orders' && <Orders />}
                 </div>
             </main>
         </div>
@@ -87,7 +89,7 @@ function Tickets() {
         refetch,
     } = useQuery<EventsData[]>({
         queryKey: ['events', page, 10],
-        queryFn: () => getEvents(page, 10),
+        queryFn: () => getMerchantEvents(page, 10),
     });
 
     return (
@@ -261,13 +263,14 @@ function Tickets() {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-2 pl-4 border-l border-zinc-800 flex items-center self-stretch">
+                                        <div className="flex flex-col gap-2 pl-4 border-l border-zinc-800 items-center self-stretch">
                                             <button
                                                 id={data.id || ''}
                                                 onClick={() => {
                                                     setIsEditing(true);
                                                     setPreData(data);
                                                 }}
+                                                disabled={data.onShelf || false}
                                                 className="p-2 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all active:scale-95 flex items-center justify-center h-full"
                                                 title="编辑票务"
                                             >
@@ -293,6 +296,7 @@ function Tickets() {
                                                             () => void refetch(),
                                                         );
                                                 }}
+                                                disabled={data.onShelf || false}
                                                 className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 flex items-center justify-center h-full"
                                                 title="删除票务"
                                             >
@@ -322,6 +326,217 @@ function Tickets() {
     );
 }
 
+function Orders() {
+    const [page, setPage] = useState(1);
+    // null: 全部, false: 有效, true: 已退款
+    const [refunded, setRefunded] = useState<boolean | null>(null);
+
+    const {
+        data: orders,
+        isLoading,
+        isError,
+        isFetching,
+        refetch,
+    } = useQuery<MerchantOrders[]>({
+        queryKey: ['orders', page, refunded],
+        queryFn: () => getMerchantOrders(page, 10, refunded),
+    });
+
+    // 日期格式化辅助函数
+    const formatDate = (dateString: string | null) => {
+        if (!dateString) return '未知时间';
+        return new Date(dateString).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const filterTabs = [
+        { label: '全部订单', value: null },
+        { label: '有效订单', value: false },
+        { label: '已退款', value: true },
+    ];
+
+    return (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* 顶部标题与操作区 */}
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white tracking-tight">订单管理</h2>
+                <button
+                    onClick={() => void refetch()}
+                    disabled={isFetching}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                    {isFetching ? '刷新中...' : '刷新'}
+                </button>
+            </div>
+
+            {/* 状态过滤标签 */}
+            <div className="flex space-x-2 mb-6">
+                {filterTabs.map((tab) => (
+                    <button
+                        key={tab.label}
+                        onClick={() => {
+                            setRefunded(tab.value);
+                            setPage(1); // 切换状态时重置页码
+                        }}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                            refunded === tab.value
+                                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.1)]'
+                                : 'bg-zinc-900/50 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* 订单列表容器 */}
+            <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 min-h-100">
+                {isError && (
+                    <div className="p-4 text-center text-sm text-rose-400 bg-rose-500/10 rounded-xl border border-rose-500/20 mb-4">
+                        获取订单数据失败，请检查网络后重试。
+                    </div>
+                )}
+
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                        <div className="text-sm text-zinc-500">加载订单中...</div>
+                    </div>
+                ) : !orders || orders.length === 0 ? (
+                    <div className="p-16 flex flex-col items-center justify-center">
+                        <svg
+                            className="w-12 h-12 text-zinc-700 mb-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                        </svg>
+                        <p className="text-zinc-500">暂无符合条件的订单记录</p>
+                    </div>
+                ) : (
+                    orders.map((order) => (
+                        <div
+                            key={order.id}
+                            className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 mb-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60 hover:border-indigo-500/40 hover:bg-zinc-900/80 transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)]"
+                        >
+                            {/* 订单核心信息 */}
+                            <div className="flex flex-col gap-2.5 flex-1">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-lg font-bold text-zinc-100 group-hover:text-indigo-400 transition-colors">
+                                        {order.eventObject?.eventName || '未知票务项目'}
+                                    </h3>
+
+                                    {order.refunded ? (
+                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                            已退款
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            有效订单
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-zinc-500">
+                                    <span className="flex items-center gap-1.5">
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                            />
+                                        </svg>
+                                        用户 ID:{' '}
+                                        <span className="text-zinc-300">
+                                            {order.userId || '未知'}
+                                        </span>
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                                            />
+                                        </svg>
+                                        票号:{' '}
+                                        <span className="text-zinc-300 font-mono">
+                                            {order.ticketCode || '暂无'}
+                                        </span>
+                                    </span>
+                                </div>
+
+                                <div className="text-xs text-zinc-600 mt-1">
+                                    下单时间: {formatDate(order.createTime)}
+                                </div>
+                            </div>
+
+                            {/* 交易金额 */}
+                            <div className="flex flex-col items-end gap-1 mt-4 sm:mt-0 min-w-30 pl-4 sm:border-l border-zinc-800">
+                                <div className="text-xs text-zinc-500 font-medium">订单金额</div>
+                                <div className="text-xl font-black text-rose-400">
+                                    ¥{order.eventObject?.price || '0.00'}
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+
+                {/* 分页控制区 */}
+                {orders && orders.length > 0 && (
+                    <div className="flex items-center justify-between mt-8 pt-4 border-t border-zinc-800/60">
+                        <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                            上一页
+                        </button>
+                        <span className="text-sm text-zinc-500 font-medium">
+                            第 <span className="text-zinc-200">{page}</span> 页
+                            {isFetching && (
+                                <span className="ml-2 animate-pulse text-indigo-400">
+                                    刷新中...
+                                </span>
+                            )}
+                        </span>
+                        <button
+                            onClick={() => setPage((p) => p + 1)}
+                            disabled={orders.length < 10}
+                            className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                            下一页
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 function CreateChangePanel({
     status,
     onClosed,
@@ -345,6 +560,7 @@ function CreateChangePanel({
             upData
                 ? {
                       ...upData,
+                      onShelf: Boolean(upData.onShelf),
                       organizers: toOrganizerIds(upData.organizers),
                   }
                 : { ...emptyEventData },
@@ -354,7 +570,7 @@ function CreateChangePanel({
     /* eslint-enable react-hooks/set-state-in-effect */
 
     const { data: organizerOptions = [] } = useQuery<Organizer[]>({
-        queryKey: ['organizers', 1, 100],
+        queryKey: ['organizers'],
         queryFn: () => getOrganizers(1, 100),
         enabled: status,
     });
@@ -439,6 +655,13 @@ function CreateChangePanel({
         }));
     };
 
+    const toggleOnShelf = () => {
+        setEventData((prev) => ({
+            ...prev,
+            onShelf: !prev.onShelf,
+        }));
+    };
+
     const toggleOrganizer = (idStr: string | null) => {
         if (!idStr) return;
         const idNum = Number(idStr);
@@ -455,6 +678,7 @@ function CreateChangePanel({
 
     const selectedOrganizers = toOrganizerIds(eventData.organizers);
     const selectedCount = selectedOrganizers.length;
+    const isOnShelf: boolean = !!eventData.onShelf;
 
     return (
         <AnimatePresence>
@@ -480,7 +704,7 @@ function CreateChangePanel({
                                 className="grid grid-cols-2 gap-x-8 gap-y-5"
                                 onSubmit={createChangeEvent}
                             >
-                                <div className="col-span-2">
+                                <div>
                                     <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                                         票务名称
                                     </label>
@@ -492,7 +716,44 @@ function CreateChangePanel({
                                         className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                                     />
                                 </div>
-
+                                <div>
+                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                        上架状态
+                                    </label>
+                                    <div
+                                        className="w-full flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-[7px] transition-all hover:border-zinc-700 cursor-pointer"
+                                        onClick={toggleOnShelf}
+                                    >
+                                        <span
+                                            className={`text-sm select-none transition-colors ${
+                                                isOnShelf
+                                                    ? 'text-indigo-400 font-medium'
+                                                    : 'text-zinc-500'
+                                            }`}
+                                        >
+                                            {isOnShelf ? '已上架' : '暂不上架'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={isOnShelf}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleOnShelf();
+                                            }}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                                                isOnShelf ? 'bg-indigo-600' : 'bg-zinc-700'
+                                            }`}
+                                        >
+                                            <span
+                                                aria-hidden="true"
+                                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${
+                                                    isOnShelf ? 'translate-x-5' : 'translate-x-0.5'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
                                 <div>
                                     <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                                         票务类型（演出/赛事）

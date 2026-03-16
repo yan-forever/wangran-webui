@@ -2,12 +2,12 @@ import '../App.css';
 import * as React from 'react';
 import { type FC, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Pannelprops } from '../Utils/interface.tsx';
+import type { Pannelprops } from '../Utils/interface.ts';
 import request from '../Utils/requestDeal.ts';
 import { useAuth } from '../AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import useHeartCheck from '../Utils/heartCheck.ts';
-import { getEvents } from '../Utils/request.ts';
+import { getOrders } from '../Utils/request.ts';
 
 function Header() {
     const [isAuthPanel, setAuthPanel] = useState(false);
@@ -43,7 +43,7 @@ function Header() {
                         {/* TODO搜索系统 */}
                         <button
                             onClick={() => {
-                                getEvents();
+                                getOrders();
                             }}
                             className="btn"
                         >
@@ -166,7 +166,11 @@ function Header() {
         </>
     );
 }
-const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({ isOpen, onClose, authMode }) => {
+export const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({
+    isOpen,
+    onClose,
+    authMode,
+}) => {
     //TODO探究不同形式react组件创建的差异
     return (
         <AnimatePresence>
