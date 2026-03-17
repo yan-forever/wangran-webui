@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import request from '../Utils/requestDeal.ts';
-import { useAuth } from '../AuthContext.tsx';
+import request from '../api/axios.ts';
+import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
 
 function AdminConsole() {

@@ -1,14 +1,14 @@
 import './App.css';
-import { AuthProvider, useAuth } from './AuthContext.tsx';
+import { AuthProvider, useAuth } from './hooks/useAuth.tsx';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import Me from './Me.tsx';
-import Header, { AuthPanel } from './APP/Header.tsx';
-import AdminConsole from './console/AdminConsole.tsx';
-import MerchantConsole from './console/MerchantConsole.tsx';
-import UserConsole from './console/UserConsole.tsx';
+import Me from './pages/Me.tsx';
+import Header, { AuthPanel } from './layouts/Header.tsx';
+import AdminConsole from './pages/AdminConsole.tsx';
+import MerchantConsole from './pages/MerchantConsole.tsx';
+import UserConsole from './pages/UserConsole.tsx';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { bookEvent, getPublicEvents } from './Utils/request.ts';
+import { bookEvent, getPublicEvents } from '@/api/event.ts';
 
 function App() {
     return (

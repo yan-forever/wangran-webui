@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from './AuthContext.tsx';
-import request from './Utils/requestDeal.ts';
+import { useAuth } from '../hooks/useAuth.tsx';
+import request from '../api/axios.ts';
 import { useNavigate } from 'react-router-dom';
 
 function Me() {

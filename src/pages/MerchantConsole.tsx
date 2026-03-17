@@ -1,28 +1,22 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../AuthContext.tsx';
+import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
-import type { EventsData, MerchantOrders, Organizer } from '../Utils/interface.ts';
+import type { EventsData, MerchantOrders, Organizer } from '../types/interface.ts';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-    createEvent,
-    deleteEvent,
-    getMerchantEvents,
-    getMerchantOrders,
-    getOrganizers,
-    upDataEvent,
-} from '../Utils/request.ts';
-import { formatTime, toOrganizerIds } from '../Utils/tool.ts';
+import { getMerchantOrders, getOrganizers } from '../api/request.ts';
+import { formatTime, toOrganizerIds } from '../lib/tool.ts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createEvent, deleteEvent, getMerchantEvents, upDataEvent } from '@/api/event.ts';
 
 const emptyEventData: EventsData = {
     eventName: '',
     eventTime: '',
     eventType: '',
     city: '',
-    price: null,
+    price: NaN,
     organizers: [],
-    stock: null,
+    stock: NaN,
     onShelf: false,
     saleStartTime: '',
     saleEndTime: '',

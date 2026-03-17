@@ -1,21 +1,21 @@
-import type { AuthContextType, Merchant, User } from './Utils/interface.ts';
+import type { AuthContextType, Merchant, User } from '../types/interface.ts';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const UseAuth = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [role, setRole] = useState<'guest' | 'user' | 'merchant' | 'admin'>(
         () => (localStorage.getItem('role') as never) || 'guest',
     );
     const [token, setToken] = useState(() => localStorage.getItem('token'));
-    const [id, setId] = useState(() => localStorage.getItem('id'));
-    const [username, setUsername] = useState(() => localStorage.getItem('username'));
-    const [phoneNumber, setPhoneNumber] = useState(() => localStorage.getItem('phoneNumber'));
-    const [merchantCode, setMerchantCode] = useState(() => localStorage.getItem('merchantCode'));
+    const [id, setId] = useState(() => localStorage.getItem('id') ?? '');
+    const [username, setUsername] = useState(() => localStorage.getItem('username') ?? '');
+    const [phoneNumber, setPhoneNumber] = useState(() => localStorage.getItem('phoneNumber') ?? '');
+    const [merchantCode, setMerchantCode] = useState(() => localStorage.getItem('merchantCode') ?? '');
     const [approvalStatus, setApprovalStatus] = useState(() =>
-        localStorage.getItem('approvalStatus'),
+        localStorage.getItem('approvalStatus') ?? '',
     );
-    const [rejectReason, setRejectReason] = useState(() => localStorage.getItem('rejectReason'));
+    const [rejectReason, setRejectReason] = useState(() => localStorage.getItem('rejectReason') ?? '');
     const login = (newToken: string | null, account: User | Merchant | null) => {
         if (account) {
             if ('merchantCode' in account && newToken) {
@@ -43,9 +43,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setId(account.id);
                 setUsername(account.username);
                 setPhoneNumber(account.phoneNumber);
-                setMerchantCode(null);
-                setApprovalStatus(null);
-                setRejectReason(null);
+                setMerchantCode('');
+                setApprovalStatus('');
+                setRejectReason('');
 
                 localStorage.setItem('role', 'user');
                 localStorage.setItem('token', newToken);
@@ -62,9 +62,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setRole('admin');
                 setToken(newToken);
                 setId('0');
+                setUsername('');
+                setPhoneNumber('');
+                setMerchantCode('');
+                setApprovalStatus('');
+                setRejectReason('');
                 localStorage.setItem('role', 'admin');
                 localStorage.setItem('token', newToken);
                 localStorage.setItem('id', '0');
+                localStorage.removeItem('username');
+                localStorage.removeItem('phoneNumber');
+                localStorage.removeItem('merchantCode');
+                localStorage.removeItem('approvalStatus');
+                localStorage.removeItem('rejectReason');
             }
         }
     };
@@ -72,12 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = useCallback(() => {
         setRole('guest');
         setToken(null);
-        setId(null);
-        setUsername(null);
-        setPhoneNumber(null);
-        setApprovalStatus(null);
-        setMerchantCode(null);
-        setRejectReason(null);
+        setId('');
+        setUsername('');
+        setPhoneNumber('');
+        setApprovalStatus('');
+        setMerchantCode('');
+        setRejectReason('');
 
         localStorage.removeItem('role');
         localStorage.removeItem('token');
@@ -96,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const isAuthenticated = !!token;
     return (
-        <AuthContext.Provider
+        <UseAuth.Provider
             value={{
                 role,
                 token,
@@ -112,11 +122,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }}
         >
             {children}
-        </AuthContext.Provider>
+        </UseAuth.Provider>
     );
 };
 export const useAuth = () => {
-    const context = useContext(AuthContext);
+    const context = useContext(UseAuth);
     if (!context) throw new Error('useAuth 必须在 Auth内部使用');
     return context;
 };

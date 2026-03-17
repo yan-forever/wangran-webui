@@ -10,7 +10,7 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"]
-        },
+        }, //引入shadcn
 
         /* Bundler mode */
         "moduleResolution": "bundler",

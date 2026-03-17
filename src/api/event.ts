@@ -1,21 +1,6 @@
-//未来集中request
-
-import type { EventsData, MerchantOrders, Order, Organizer } from './interface.ts';
-import request from './requestDeal.ts';
-import { formatToDatetimeLocal, formatToInstant, isOrganizerArray } from './tool.ts';
-
-export const getOrganizers = async (
-    page: number = 1,
-    pageSize: number = 10,
-): Promise<Organizer[]> => {
-    const response = await request.get('/organizers', {
-        params: {
-            page: page,
-            pageSize: pageSize,
-        },
-    });
-    return response.data.data;
-};
+import request from '@/api/axios.ts';
+import type { EventsData } from '@/types/interface.ts';
+import { formatToDatetimeLocal, formatToInstant, isOrganizerArray } from '@/lib/tool.ts';
 
 export const getMerchantEvents = async (
     page: number = 1,
@@ -39,7 +24,6 @@ export const getMerchantEvents = async (
             : [],
     }));
 };
-
 export const getPublicEvents = async (
     eventType?: string,
     city?: string,
@@ -60,13 +44,11 @@ export const getPublicEvents = async (
     });
     return response.data.data;
 };
-
 export const bookEvent = async (eventId: string) => {
     return request.post(`/orders`, {
         eventId: eventId,
     });
 };
-
 export const createEvent = async (event: EventsData) => {
     const { id, eventCode, ...rest } = event;
     const payload = {
@@ -78,7 +60,6 @@ export const createEvent = async (event: EventsData) => {
 
     return request.post('/events', payload);
 };
-
 export const upDataEvent = async (
     id: string,
     event: Partial<Omit<EventsData, 'id' | 'eventCode'>>,
@@ -87,54 +68,28 @@ export const upDataEvent = async (
     const payload: Partial<EventsData> = { ...rest };
 
     if ('eventTime' in rest) {
-        payload.eventTime = formatToInstant(rest.eventTime ?? null);
+        const eventTime = formatToInstant(rest.eventTime ?? null);
+        if (eventTime) {
+            payload.eventTime = eventTime;
+        }
     }
 
     if ('saleStartTime' in rest) {
-        payload.saleStartTime = formatToInstant(rest.saleStartTime ?? null);
+        const saleStartTime = formatToInstant(rest.saleStartTime ?? null);
+        if (saleStartTime) {
+            payload.saleStartTime = saleStartTime;
+        }
     }
 
     if ('saleEndTime' in rest) {
-        payload.saleEndTime = formatToInstant(rest.saleEndTime ?? null);
+        const saleEndTime = formatToInstant(rest.saleEndTime ?? null);
+        if (saleEndTime) {
+            payload.saleEndTime = saleEndTime;
+        }
     }
 
     return request.patch(`/events/${id}`, payload);
 };
-
 export const deleteEvent = async (id: string) => {
     return request.delete(`/events/${id}`);
-};
-
-export const getMerchantOrders = async (
-    page?: number,
-    pageSize?: number,
-    refunded?: boolean | null,
-): Promise<MerchantOrders[]> => {
-    const response = await request.get('/orders/merchant', {
-        params: {
-            page: page,
-            pageSize: pageSize,
-            refunded: refunded,
-        },
-    });
-    return response.data.data;
-};
-
-export const getOrders = async (
-    page?: number,
-    pageSize?: number,
-    refunded?: boolean,
-): Promise<Order[]> => {
-    const response = await request.get('/orders', {
-        params: {
-            page: page,
-            pageSize: pageSize,
-            refunded: refunded,
-        },
-    });
-    return response.data.data;
-};
-
-export const refundOrder = async (id: string) => {
-    return request.post(`/orders/${id}/refund`);
 };

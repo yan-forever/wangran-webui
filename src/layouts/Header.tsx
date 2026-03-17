@@ -1,13 +1,12 @@
 import '../App.css';
 import * as React from 'react';
-import { type FC, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Pannelprops } from '../Utils/interface.ts';
-import request from '../Utils/requestDeal.ts';
-import { useAuth } from '../AuthContext.tsx';
+import request from '../api/axios.ts';
+import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
-import useHeartCheck from '../Utils/heartCheck.ts';
-import { getOrders } from '../Utils/request.ts';
+import useHeartCheck from '../lib/heartCheck.ts';
+import { Button } from '@/components/ui/button.tsx';
 
 function Header() {
     const [isAuthPanel, setAuthPanel] = useState(false);
@@ -41,14 +40,7 @@ function Header() {
                     </div>
                     <div className="flex items-center gap-3">
                         {/* TODO搜索系统 */}
-                        <button
-                            onClick={() => {
-                                getOrders();
-                            }}
-                            className="btn"
-                        >
-                            测试
-                        </button>
+                        <Button variant="default">Click me</Button>
 
                         {isAuthenticated ? (
                             <>
@@ -166,12 +158,16 @@ function Header() {
         </>
     );
 }
-export const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({
+
+export function AuthPanel({
     isOpen,
     onClose,
     authMode,
-}) => {
-    //TODO探究不同形式react组件创建的差异
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    authMode: boolean;
+}) {
     return (
         <AnimatePresence>
             //TODO理解遮罩控件的原理
@@ -218,12 +214,9 @@ export const AuthPanel: FC<Pannelprops & { authMode: boolean }> = ({
             )}
         </AnimatePresence>
     );
-};
+}
 
-const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({
-    initialMode,
-    onClose,
-}) => {
+function AuthFormContent({ initialMode, onClose }: { initialMode: boolean; onClose: () => void }) {
     const [mode, setMode] = useState(initialMode);
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
@@ -379,5 +372,5 @@ const AuthFormContent: FC<{ initialMode: boolean; onClose: () => void }> = ({
             </div>
         </div>
     );
-};
+}
 export default Header;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import request from './requestDeal.ts';
+import request from '../api/axios.ts';
 
 function useHeartCheck(intervalMs = 5000) {
     const [state, setState] = useState<boolean>(true);

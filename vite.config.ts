@@ -5,7 +5,6 @@ import zipPack from 'vite-plugin-zip-pack';
 import * as path from 'node:path';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-    // 3. 根据当前模式（development 或 production）加载环境变量
     // process.cwd() 获取当前项目根目录
     const env = loadEnv(mode, process.cwd());
 

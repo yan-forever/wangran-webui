@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../AuthContext.tsx';
+import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getOrders, refundOrder } from '../Utils/request.ts';
-import type { Order } from '../Utils/interface.ts';
+import { getOrders, refundOrder } from '../api/request.ts';
+import type { Order } from '../types/interface.ts';
 
 function UserConsole() {
     const { role, logout } = useAuth();
