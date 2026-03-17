@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import zipPack from 'vite-plugin-zip-pack';
+import * as path from 'node:path';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
     // 3. 根据当前模式（development 或 production）加载环境变量
@@ -18,6 +19,11 @@ export default defineConfig(({ mode }) => {
                 outFileName: 'wangran-webui.zip',
             }),
         ],
+        resolve: {
+            alias: {
+                '@': path.resolve(__dirname, './src'),
+            },
+        },
         server: {
             proxy: {
                 '/api': {
