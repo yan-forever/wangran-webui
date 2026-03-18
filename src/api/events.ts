@@ -1,5 +1,5 @@
 import request from '@/api/axios.ts';
-import type { EventsData } from '@/types/interface.ts';
+import type { EventsData } from '@/types/events.ts';
 import { formatToDatetimeLocal, formatToInstant, isOrganizerArray } from '@/lib/tool.ts';
 
 export const getMerchantEvents = async (
@@ -44,7 +44,7 @@ export const getPublicEvents = async (
     });
     return response.data.data;
 };
-export const bookEvent = async (eventId: string) => {
+export const bookEvent = async (eventId: number) => {
     return request.post(`/orders`, {
         eventId: eventId,
     });
@@ -61,7 +61,7 @@ export const createEvent = async (event: EventsData) => {
     return request.post('/events', payload);
 };
 export const upDataEvent = async (
-    id: string,
+    id: number,
     event: Partial<Omit<EventsData, 'id' | 'eventCode'>>,
 ) => {
     const rest = event;
@@ -90,6 +90,6 @@ export const upDataEvent = async (
 
     return request.patch(`/events/${id}`, payload);
 };
-export const deleteEvent = async (id: string) => {
+export const deleteEvent = async (id: number) => {
     return request.delete(`/events/${id}`);
 };

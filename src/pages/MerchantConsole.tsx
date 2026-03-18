@@ -2,12 +2,16 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
-import type { EventsData, MerchantOrders, Organizer } from '../types/interface.ts';
+import type { EventsData } from '@/types/events.ts';
+import type { MerchantOrders } from '@/types/orders.ts';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getMerchantOrders, getOrganizers } from '../api/request.ts';
 import { formatTime, toOrganizerIds } from '../lib/tool.ts';
+import { formatDate } from '@/lib/tool.ts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createEvent, deleteEvent, getMerchantEvents, upDataEvent } from '@/api/event.ts';
+import { createEvent, deleteEvent, getMerchantEvents, upDataEvent } from '@/api/events.ts';
+import { getOrganizers } from '@/api/organizers.ts';
+import type { Organizer } from '@/types/organizers.ts';
+import { getOrdersMerchant } from '@/api/orders.ts';
 
 const emptyEventData: EventsData = {
     eventName: '',
@@ -146,7 +150,7 @@ function Tickets() {
                             return (
                                 <div
                                     key={data.id}
-                                    id={data.id || ''}
+                                    id={data.id !== undefined ? String(data.id) : undefined}
                                     className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 mb-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60 hover:border-indigo-500/40 hover:bg-zinc-900/80 transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)]"
                                 >
                                     <div className="flex flex-col gap-2.5">
@@ -259,7 +263,7 @@ function Tickets() {
 
                                         <div className="flex flex-col gap-2 pl-4 border-l border-zinc-800 items-center self-stretch">
                                             <button
-                                                id={data.id || ''}
+                                                id={data.id !== undefined ? String(data.id) : undefined}
                                                 onClick={() => {
                                                     setIsEditing(true);
                                                     setPreData(data);
@@ -283,12 +287,16 @@ function Tickets() {
                                                 </svg>
                                             </button>
                                             <button
-                                                id={data.id || ''}
+                                                id={data.id !== undefined ? String(data.id) : undefined}
                                                 onClick={() => {
-                                                    if (window.confirm('确定要删除这个票务吗？'))
-                                                        deleteEvent(data.id || '').then(
+                                                    if (
+                                                        window.confirm('确定要删除这个票务吗？') &&
+                                                        data.id !== undefined
+                                                    ) {
+                                                        deleteEvent(data.id).then(
                                                             () => void refetch(),
                                                         );
+                                                    }
                                                 }}
                                                 disabled={data.onShelf || false}
                                                 className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 flex items-center justify-center h-full"
@@ -333,20 +341,9 @@ function Orders() {
         refetch,
     } = useQuery<MerchantOrders[]>({
         queryKey: ['orders', page, refunded],
-        queryFn: () => getMerchantOrders(page, 10, refunded),
+        queryFn: () => getOrdersMerchant(page, 10, refunded),
     });
 
-    // 日期格式化辅助函数
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return '未知时间';
-        return new Date(dateString).toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
 
     const filterTabs = [
         { label: '全部订单', value: null },
@@ -656,9 +653,8 @@ function CreateChangePanel({
         }));
     };
 
-    const toggleOrganizer = (idStr: string | null) => {
-        if (!idStr) return;
-        const idNum = Number(idStr);
+    const toggleOrganizer = (idNum: number | null | undefined) => {
+        if (idNum === null || idNum === undefined || Number.isNaN(idNum)) return;
 
         setEventData((prev) => {
             const currentSelected = toOrganizerIds(prev.organizers);

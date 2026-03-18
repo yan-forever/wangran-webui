@@ -13,9 +13,10 @@ function Me() {
     const [newPassword, setNewPassword] = useState(''); //TODO 修改密码
     const [newPhoneNumber, setNewPhoneNumber] = useState<string>(phoneNumber || '加载中');
     useEffect(() => {
-        if (id == 'undefined') {
+        if (id === null) {
             logout();
             navigate('/');
+            return;
         }
         const getUserData = async () => {
             if (isAuthenticated) {

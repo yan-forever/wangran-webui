@@ -1,5 +1,5 @@
 import request from '@/api/axios.ts';
-import type { Merchant } from '@/types/interface.ts';
+import type { Merchant } from '@/types/merchants.ts';
 
 export const getMerchants = async (page?: number, pageSize?: number): Promise<Merchant[]> => {
     const response = await request.get('/api/merchants', {
@@ -41,19 +41,19 @@ export const importMerchants = async (file: File) => {
     return response.data;
 };
 
-export const getMerchant = async (id: string): Promise<Merchant> => {
+export const getMerchant = async (id: number): Promise<Merchant> => {
     const response = await request.get('/api/merchants/', {
         params: id,
     });
     return response.data;
 };
 
-export const deleteMerchant = async (id: string) => {
+export const deleteMerchant = async (id: number) => {
     return request.delete(`/api/merchants/`, { params: id });
 };
 
 export const updateMerchant = async (
-    id: string,
+    id: number,
     phoneNumber: number,
     password: string,
     username: string,

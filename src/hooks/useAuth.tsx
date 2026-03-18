@@ -1,5 +1,7 @@
-import type { AuthContextType, Merchant, User } from '../types/interface.ts';
+import type { AuthContextType } from '@/types/auth.ts';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import type { Merchant } from '@/types/merchants.ts';
+import type { User } from '@/types/users.ts';
 
 const UseAuth = createContext<AuthContextType | undefined>(undefined);
 
@@ -8,14 +10,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         () => (localStorage.getItem('role') as never) || 'guest',
     );
     const [token, setToken] = useState(() => localStorage.getItem('token'));
-    const [id, setId] = useState(() => localStorage.getItem('id') ?? '');
+    const [id, setId] = useState<number | null>(() => {
+        const storedId = localStorage.getItem('id');
+        if (!storedId) return null;
+        const parsed = Number(storedId);
+        return Number.isNaN(parsed) ? null : parsed;
+    });
     const [username, setUsername] = useState(() => localStorage.getItem('username') ?? '');
     const [phoneNumber, setPhoneNumber] = useState(() => localStorage.getItem('phoneNumber') ?? '');
-    const [merchantCode, setMerchantCode] = useState(() => localStorage.getItem('merchantCode') ?? '');
-    const [approvalStatus, setApprovalStatus] = useState(() =>
-        localStorage.getItem('approvalStatus') ?? '',
+    const [merchantCode, setMerchantCode] = useState(
+        () => localStorage.getItem('merchantCode') ?? '',
     );
-    const [rejectReason, setRejectReason] = useState(() => localStorage.getItem('rejectReason') ?? '');
+    const [approvalStatus, setApprovalStatus] = useState(
+        () => localStorage.getItem('approvalStatus') ?? '',
+    );
+    const [rejectReason, setRejectReason] = useState(
+        () => localStorage.getItem('rejectReason') ?? '',
+    );
     const login = (newToken: string | null, account: User | Merchant | null) => {
         if (account) {
             if ('merchantCode' in account && newToken) {
@@ -31,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 localStorage.setItem('role', 'merchant');
                 localStorage.setItem('token', newToken);
-                localStorage.setItem('id', account.id!);
+                localStorage.setItem('id', String(account.id));
                 localStorage.setItem('username', account.username!);
                 localStorage.setItem('phoneNumber', account.phoneNumber!);
                 localStorage.setItem('merchantCode', account.merchantCode!);
@@ -49,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 localStorage.setItem('role', 'user');
                 localStorage.setItem('token', newToken);
-                localStorage.setItem('id', account.id);
+                localStorage.setItem('id', String(account.id));
                 localStorage.setItem('username', account.username!);
                 localStorage.setItem('phoneNumber', account.phoneNumber!);
                 localStorage.removeItem('merchantCode');
@@ -61,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (newToken) {
                 setRole('admin');
                 setToken(newToken);
-                setId('0');
+                setId(0);
                 setUsername('');
                 setPhoneNumber('');
                 setMerchantCode('');
@@ -82,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = useCallback(() => {
         setRole('guest');
         setToken(null);
-        setId('');
+        setId(null);
         setUsername('');
         setPhoneNumber('');
         setApprovalStatus('');

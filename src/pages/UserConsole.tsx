@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getOrders, refundOrder } from '../api/request.ts';
-import type { Order } from '../types/interface.ts';
+import type { Order } from '@/types/orders.ts';
+import { getOrders, refundOrder } from '@/api/orders.ts';
+import { formatDate } from '@/lib/tool.ts';
 
 function UserConsole() {
     const { role, logout } = useAuth();
@@ -35,17 +36,6 @@ function UserConsole() {
         queryFn: () => getOrders(page, 10, refunded),
     });
 
-    // 时间格式化工具
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return '未知时间';
-        return new Date(dateString).toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
 
     return (
         <div className="flex w-full min-h-[calc(100vh-64px)]">
@@ -216,7 +206,7 @@ function UserConsole() {
                                                 <button
                                                     onClick={() => {
                                                         if (window.confirm('确定要申请退款吗？')) {
-                                                            refundOrder(order.id || '');
+                                                            refundOrder(order.id);
                                                             alert('退款成功');
                                                         }
                                                     }}

@@ -1,4 +1,5 @@
-import type { EventsData, Organizer } from '../types/interface.ts';
+import type { EventsData } from '@/types/events.ts';
+import type { Organizer } from '@/types/organizers.ts';
 
 export const formatTime = (timeStr: string | null | undefined) => {
     if (!timeStr) return '待定';
@@ -7,6 +8,27 @@ export const formatTime = (timeStr: string | null | undefined) => {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+export const formatDate = (dateString: string | null) => {
+    if (!dateString) return '未知时间';
+    return new Date(dateString).toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+export const formatDateShort = (dateStr: string | null) => {
+    if (!dateStr) return '时间待定';
+    return new Date(dateStr).toLocaleString('zh-CN', {
+        month: 'short',
+        day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
     });
@@ -49,3 +71,14 @@ export const toOrganizerIds = (organizers: EventsData['organizers']): number[] =
     }
     return [];
 };
+
+export const getSaleStatus = (startTime: string | null, endTime: string | null, currentTime: number = Date.now()) => {
+    if (!startTime || !endTime) return '未定义';
+    const start = new Date(startTime).getTime();
+    const end = new Date(endTime).getTime();
+
+    if (currentTime < start) return '未开售';
+    if (currentTime > end) return '已售罄';
+    return '售票中';
+};
+
