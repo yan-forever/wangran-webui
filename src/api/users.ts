@@ -25,9 +25,9 @@ export const importUsers = async (file: File) => {
     return request.post(`/api/users/import`, formData);
 };
 
-export const getUser = async (id: string): Promise<User> => {
-    const response = await request.get('/api/users/', { params: id });
-    return response.data;
+export const getUser = async (id: number | string): Promise<User> => {
+    const response = await request.get(`/users/${id}`);
+    return response.data ?? response;
 };
 
 export const deleteUser = async (id: string) => {
@@ -35,16 +35,16 @@ export const deleteUser = async (id: string) => {
 };
 
 export const upDataUser = async (
-    id: string,
-    phoneNumber?: number,
+    id: number | string,
+    phoneNumber?: number | string,
     password?: string,
     username?: string,
 ): Promise<User> => {
-    const response = await request.patch(`/api/users/`, {
-        params: { id },
+    const response = await request.patch(`/users/${id}`, {
         phoneNumber,
         password,
         username,
     });
-    return response.data;
+    return response.data ?? response;
 };
+

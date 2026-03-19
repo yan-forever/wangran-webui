@@ -1,26 +1,65 @@
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { useAuth } from '../hooks/useAuth.tsx';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { EventsData } from '@/types/events.ts';
-import type { MerchantOrders } from '@/types/orders.ts';
-import { AnimatePresence, motion } from 'framer-motion';
-import { formatTime, toOrganizerIds } from '../lib/tool.ts';
-import { formatDate } from '@/lib/tool.ts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createEvent, deleteEvent, getMerchantEvents, upDataEvent } from '@/api/events.ts';
-import { getOrganizers } from '@/api/organizers.ts';
-import type { Organizer } from '@/types/organizers.ts';
 import { getOrdersMerchant } from '@/api/orders.ts';
+import { getOrganizers } from '@/api/organizers.ts';
+import { useAuth } from '@/hooks/useAuth.tsx';
+import { formatDate, toOrganizerIds } from '@/lib/tool.ts';
+import type { EventsData } from '@/types/events.ts';
+import type { MerchantOrders } from '@/types/orders.ts';
+import type { Organizer } from '@/types/organizers.ts';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Input,
+    Label,
+    Skeleton,
+    Switch,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@/components/ui';
+
+const PAGE_SIZE = 10;
 
 const emptyEventData: EventsData = {
     eventName: '',
     eventTime: '',
     eventType: '',
     city: '',
-    price: NaN,
+    price: 0,
     organizers: [],
-    stock: NaN,
+    stock: 0,
     onShelf: false,
     saleStartTime: '',
     saleEndTime: '',
@@ -31,53 +70,36 @@ function MerchantConsole() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('tickets');
 
-    const menuItems = [
-        { id: 'tickets', label: '我的票务' },
-        { id: 'orders', label: '全部订单' },
-    ];
-
     useEffect(() => {
-        if (role != 'merchant') {
+        if (role !== 'merchant') {
             logout();
             navigate('/');
         }
     }, [logout, navigate, role]);
 
     return (
-        <div className="flex w-full min-h-[calc(100vh-64px)] bg-zinc-950">
-            <aside className="w-64 bg-zinc-900/30 border-r border-zinc-800 p-4 shrink-0">
-                <nav className="space-y-1">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xl font-medium transition-all duration-200 ${
-                                activeTab === item.id
-                                    ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
-                                    : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border border-transparent'
-                            }`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </nav>
-            </aside>
+        <div className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-5">
+                <TabsList className="w-full justify-start">
+                    <TabsTrigger value="tickets">我的票务</TabsTrigger>
+                    <TabsTrigger value="orders">全部订单</TabsTrigger>
+                </TabsList>
 
-            <main className="flex-1 p-8 overflow-y-auto">
-                <div className="max-w-4xl mx-auto">
-                    {activeTab === 'tickets' && <Tickets />}
-                    {activeTab === 'orders' && <Orders />}
-                </div>
-            </main>
+                <TabsContent value="tickets">
+                    <TicketsPanel />
+                </TabsContent>
+                <TabsContent value="orders">
+                    <OrdersPanel />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
 
-function Tickets() {
-    const [isCreate, setIsCreate] = useState(false);
-    const [page] = useState(1);
-    const [isEditing, setIsEditing] = useState(false);
-    const [preData, setPreData] = useState<EventsData>(emptyEventData);
+function TicketsPanel() {
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editing, setEditing] = useState<EventsData | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const {
         data: events = [],
@@ -86,903 +108,520 @@ function Tickets() {
         isFetching,
         refetch,
     } = useQuery<EventsData[]>({
-        queryKey: ['events', page, 10],
-        queryFn: () => getMerchantEvents(page, 10),
+        queryKey: ['merchant-events', 1, PAGE_SIZE],
+        queryFn: () => getMerchantEvents(1, PAGE_SIZE),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: number) => deleteEvent(id),
+        onSuccess: () => void refetch(),
     });
 
     return (
-        <>
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-white tracking-tight">我的票务</h2>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => void refetch()}
-                            disabled={isFetching}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            {isFetching ? '刷新中...' : '刷新'}
-                        </button>
-                        <button
-                            onClick={() => setIsCreate(true)}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all active:scale-95 flex items-center gap-2"
-                        >
-                            <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M12 4v16m8-8H4"
-                                />
-                            </svg>
-                            创建票务
-                        </button>
+        <Card className="border-zinc-800 bg-zinc-900/40">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <div>
+                    <CardTitle>我的票务</CardTitle>
+                    <CardDescription>管理票务信息、库存与上架状态</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+                        {isFetching ? '刷新中...' : '刷新'}
+                    </Button>
+                    <Button onClick={() => setIsCreateOpen(true)}>创建票务</Button>
+                </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                {isError && (
+                    <Alert variant="destructive">
+                        <AlertTitle>数据加载失败</AlertTitle>
+                        <AlertDescription>票务列表获取失败，请稍后重试。</AlertDescription>
+                    </Alert>
+                )}
+
+                {isLoading ? (
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
                     </div>
-                </div>
-                <CreateChangePanel
-                    status={isCreate}
-                    onClosed={() => setIsCreate(false)}
-                    toUpData={false}
-                />
-                <CreateChangePanel
-                    key={preData.id || 'edit-panel'}
-                    status={isEditing}
-                    onClosed={() => setIsEditing(false)}
-                    toUpData={true}
-                    upData={preData}
-                />
-                <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 min-h-75">
-                    {isLoading ? (
-                        <div className="p-4 text-center text-sm text-zinc-500">加载中...</div>
-                    ) : isError ? (
-                        <div className="p-4 text-center text-sm text-red-400">
-                            加载失败，请稍后重试
-                        </div>
-                    ) : events.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-zinc-500">暂无数据</div>
-                    ) : (
-                        events.map((data) => {
-                            return (
-                                <div
-                                    key={data.id}
-                                    id={data.id !== undefined ? String(data.id) : undefined}
-                                    className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 mb-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60 hover:border-indigo-500/40 hover:bg-zinc-900/80 transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)]"
-                                >
-                                    <div className="flex flex-col gap-2.5">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-lg font-bold text-zinc-100 group-hover:text-indigo-400 transition-colors">
-                                                {data.eventName || '未命名票务'}
-                                            </h3>
-                                            {data.eventType && (
-                                                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
-                                                    {data.eventType}
-                                                </span>
-                                            )}
+                ) : events.length === 0 ? (
+                    <p className="text-sm text-zinc-400">暂无票务数据。</p>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>名称</TableHead>
+                                <TableHead>类型</TableHead>
+                                <TableHead>城市</TableHead>
+                                <TableHead>活动时间</TableHead>
+                                <TableHead>库存</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {events.map((event) => (
+                                <TableRow key={event.id ?? event.eventCode ?? event.eventName}>
+                                    <TableCell>{event.eventName || '未命名票务'}</TableCell>
+                                    <TableCell>{event.eventType || '-'}</TableCell>
+                                    <TableCell>{event.city || '-'}</TableCell>
+                                    <TableCell>{formatDate(event.eventTime)}</TableCell>
+                                    <TableCell>{event.stock}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={event.onShelf ? 'default' : 'secondary'}>
+                                            {event.onShelf ? '已上架' : '未上架'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="space-x-2 text-right">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setEditing(event)}
+                                            disabled={!!event.onShelf}
+                                        >
+                                            编辑
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() =>
+                                                setDeletingId(
+                                                    event.id === undefined ? null : Number(event.id),
+                                                )
+                                            }
+                                            disabled={!!event.onShelf || event.id === undefined}
+                                        >
+                                            删除
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
 
-                                            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                售卖中
-                                            </span>
-                                        </div>
+            <EventFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+            <EventFormDialog
+                open={editing !== null}
+                onOpenChange={(open) => {
+                    if (!open) setEditing(null);
+                }}
+                source={editing ?? undefined}
+            />
 
-                                        <div className="flex items-center gap-5 text-sm text-zinc-500">
-                                            <span className="flex items-center gap-1.5">
-                                                <svg
-                                                    className="w-4 h-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                    />
-                                                </svg>
-                                                {formatTime(data.eventTime)}
-                                            </span>
-                                            <span className="flex items-center gap-1.5">
-                                                <svg
-                                                    className="w-4 h-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                    />
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                    />
-                                                </svg>
-                                                {data.city || '未知地点'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-6 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
-                                        <div className="flex flex-col items-end gap-3">
-                                            <div className="flex items-center gap-8">
-                                                <div className="text-right">
-                                                    <div className="text-xs text-zinc-500 font-medium mb-1">
-                                                        单价
-                                                    </div>
-                                                    <div className="text-xl font-black text-rose-400">
-                                                        ¥{data.price || 0}
-                                                    </div>
-                                                </div>
-
-                                                <div className="text-right">
-                                                    <div className="text-xs text-zinc-500 font-medium mb-1">
-                                                        剩余库存
-                                                    </div>
-                                                    <div className="text-xl font-bold text-zinc-100">
-                                                        {data.stock || 0}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 bg-zinc-800/40 px-2 py-1 rounded-md border border-zinc-800/60">
-                                                <svg
-                                                    className="w-3.5 h-3.5 text-zinc-500"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                    />
-                                                </svg>
-                                                <span>
-                                                    售卖:{' '}
-                                                    {data.saleStartTime
-                                                        ? formatTime(data.saleStartTime)
-                                                        : '未设置'}{' '}
-                                                    -{' '}
-                                                    {data.saleEndTime
-                                                        ? formatTime(data.saleEndTime)
-                                                        : '未设置'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-2 pl-4 border-l border-zinc-800 items-center self-stretch">
-                                            <button
-                                                id={data.id !== undefined ? String(data.id) : undefined}
-                                                onClick={() => {
-                                                    setIsEditing(true);
-                                                    setPreData(data);
-                                                }}
-                                                disabled={data.onShelf || false}
-                                                className="p-2 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all active:scale-95 flex items-center justify-center h-full"
-                                                title="编辑票务"
-                                            >
-                                                <svg
-                                                    className="w-5 h-5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                    />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                id={data.id !== undefined ? String(data.id) : undefined}
-                                                onClick={() => {
-                                                    if (
-                                                        window.confirm('确定要删除这个票务吗？') &&
-                                                        data.id !== undefined
-                                                    ) {
-                                                        deleteEvent(data.id).then(
-                                                            () => void refetch(),
-                                                        );
-                                                    }
-                                                }}
-                                                disabled={data.onShelf || false}
-                                                className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 flex items-center justify-center h-full"
-                                                title="删除票务"
-                                            >
-                                                <svg
-                                                    className="w-5 h-5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        </>
+            <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认删除该票务？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            删除后无法恢复，且已上架票务不允许删除。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={async () => {
+                                if (deletingId === null) return;
+                                await deleteMutation.mutateAsync(deletingId);
+                                setDeletingId(null);
+                            }}
+                        >
+                            确认删除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </Card>
     );
 }
 
-function Orders() {
+function OrdersPanel() {
     const [page, setPage] = useState(1);
-    // null: 全部, false: 有效, true: 已退款
     const [refunded, setRefunded] = useState<boolean | null>(null);
 
     const {
-        data: orders,
+        data: orders = [],
         isLoading,
         isError,
         isFetching,
         refetch,
     } = useQuery<MerchantOrders[]>({
-        queryKey: ['orders', page, refunded],
-        queryFn: () => getOrdersMerchant(page, 10, refunded),
+        queryKey: ['merchant-orders', page, refunded],
+        queryFn: () => getOrdersMerchant(page, PAGE_SIZE, refunded),
     });
 
-
-    const filterTabs = [
-        { label: '全部订单', value: null },
-        { label: '有效订单', value: false },
-        { label: '已退款', value: true },
-    ];
+    const statusValue = refunded === null ? 'all' : refunded ? 'refunded' : 'valid';
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 顶部标题与操作区 */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white tracking-tight">订单管理</h2>
-                <button
-                    onClick={() => void refetch()}
-                    disabled={isFetching}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    {isFetching ? '刷新中...' : '刷新'}
-                </button>
-            </div>
-
-            {/* 状态过滤标签 */}
-            <div className="flex space-x-2 mb-6">
-                {filterTabs.map((tab) => (
-                    <button
-                        key={tab.label}
-                        onClick={() => {
-                            setRefunded(tab.value);
-                            setPage(1); // 切换状态时重置页码
-                        }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            refunded === tab.value
-                                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.1)]'
-                                : 'bg-zinc-900/50 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* 订单列表容器 */}
-            <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 min-h-100">
-                {isError && (
-                    <div className="p-4 text-center text-sm text-rose-400 bg-rose-500/10 rounded-xl border border-rose-500/20 mb-4">
-                        获取订单数据失败，请检查网络后重试。
+        <Card className="border-zinc-800 bg-zinc-900/40">
+            <CardHeader className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>订单管理</CardTitle>
+                        <CardDescription>查看商户订单与退款状态</CardDescription>
                     </div>
+                    <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+                        {isFetching ? '刷新中...' : '刷新'}
+                    </Button>
+                </div>
+                <Tabs
+                    value={statusValue}
+                    onValueChange={(value) => {
+                        setPage(1);
+                        if (value === 'all') setRefunded(null);
+                        if (value === 'valid') setRefunded(false);
+                        if (value === 'refunded') setRefunded(true);
+                    }}
+                >
+                    <TabsList>
+                        <TabsTrigger value="all">全部</TabsTrigger>
+                        <TabsTrigger value="valid">有效</TabsTrigger>
+                        <TabsTrigger value="refunded">已退款</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {isError && (
+                    <Alert variant="destructive">
+                        <AlertTitle>数据加载失败</AlertTitle>
+                        <AlertDescription>订单数据获取失败，请稍后重试。</AlertDescription>
+                    </Alert>
                 )}
 
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                        <div className="text-sm text-zinc-500">加载订单中...</div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
                     </div>
-                ) : !orders || orders.length === 0 ? (
-                    <div className="p-16 flex flex-col items-center justify-center">
-                        <svg
-                            className="w-12 h-12 text-zinc-700 mb-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
-                        <p className="text-zinc-500">暂无符合条件的订单记录</p>
-                    </div>
+                ) : orders.length === 0 ? (
+                    <p className="text-sm text-zinc-400">暂无符合条件的订单。</p>
                 ) : (
-                    orders.map((order) => (
-                        <div
-                            key={order.id}
-                            className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 mb-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60 hover:border-indigo-500/40 hover:bg-zinc-900/80 transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)]"
-                        >
-                            {/* 订单核心信息 */}
-                            <div className="flex flex-col gap-2.5 flex-1">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="text-lg font-bold text-zinc-100 group-hover:text-indigo-400 transition-colors">
-                                        {order.eventObject?.eventName || '未知票务项目'}
-                                    </h3>
-
-                                    {order.refunded ? (
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                                            已退款
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            有效订单
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-zinc-500">
-                                    <span className="flex items-center gap-1.5">
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                            />
-                                        </svg>
-                                        用户 ID:{' '}
-                                        <span className="text-zinc-300">
-                                            {order.userId || '未知'}
-                                        </span>
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
-                                            />
-                                        </svg>
-                                        票号:{' '}
-                                        <span className="text-zinc-300 font-mono">
-                                            {order.ticketCode || '暂无'}
-                                        </span>
-                                    </span>
-                                </div>
-
-                                <div className="text-xs text-zinc-600 mt-1">
-                                    下单时间: {formatDate(order.createTime)}
-                                </div>
-                            </div>
-
-                            {/* 交易金额 */}
-                            <div className="flex flex-col items-end gap-1 mt-4 sm:mt-0 min-w-30 pl-4 sm:border-l border-zinc-800">
-                                <div className="text-xs text-zinc-500 font-medium">订单金额</div>
-                                <div className="text-xl font-black text-rose-400">
-                                    ¥{order.eventObject?.price || '0.00'}
-                                </div>
-                            </div>
-                        </div>
-                    ))
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>活动</TableHead>
+                                <TableHead>用户</TableHead>
+                                <TableHead>票号</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead>下单时间</TableHead>
+                                <TableHead className="text-right">金额</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {orders.map((order) => (
+                                <TableRow key={order.id}>
+                                    <TableCell>{order.eventObject?.eventName || '未知活动'}</TableCell>
+                                    <TableCell>{order.userId}</TableCell>
+                                    <TableCell className="font-mono">{order.ticketCode}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={order.refunded ? 'outline' : 'default'}>
+                                            {order.refunded ? '已退款' : '有效'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatDate(order.createTime)}</TableCell>
+                                    <TableCell className="text-right">
+                                        {`¥${order.eventObject?.price ?? 0}`}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 )}
 
-                {/* 分页控制区 */}
-                {orders && orders.length > 0 && (
-                    <div className="flex items-center justify-between mt-8 pt-4 border-t border-zinc-800/60">
-                        <button
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            上一页
-                        </button>
-                        <span className="text-sm text-zinc-500 font-medium">
-                            第 <span className="text-zinc-200">{page}</span> 页
-                            {isFetching && (
-                                <span className="ml-2 animate-pulse text-indigo-400">
-                                    刷新中...
-                                </span>
-                            )}
-                        </span>
-                        <button
-                            onClick={() => setPage((p) => p + 1)}
-                            disabled={orders.length < 10}
-                            className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            下一页
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
+                <div className="flex items-center justify-between">
+                    <Button
+                        variant="outline"
+                        disabled={page === 1}
+                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    >
+                        上一页
+                    </Button>
+                    <span className="text-sm text-zinc-400">第 {page} 页</span>
+                    <Button
+                        variant="outline"
+                        disabled={orders.length < PAGE_SIZE}
+                        onClick={() => setPage((current) => current + 1)}
+                    >
+                        下一页
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
-function CreateChangePanel({
-    status,
-    onClosed,
-    toUpData,
-    upData,
+
+function EventFormDialog({
+    open,
+    onOpenChange,
+    source,
 }: {
-    status: boolean;
-    onClosed: () => void;
-    toUpData: boolean;
-    upData?: EventsData;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    source?: EventsData;
 }) {
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const queryClient = useQueryClient();
-    const [eventData, setEventData] = useState<EventsData>(upData ?? emptyEventData);
-
-    /* eslint-disable react-hooks/set-state-in-effect */
-    useEffect(() => {
-        if (!status) return;
-
-        setEventData(
-            upData
-                ? {
-                      ...upData,
-                      onShelf: Boolean(upData.onShelf),
-                      organizers: toOrganizerIds(upData.organizers),
-                  }
-                : { ...emptyEventData },
-        );
-        setIsDropdownOpen(false);
-    }, [status, upData]);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    const [formData, setFormData] = useState<EventsData>(emptyEventData);
+    const [formError, setFormError] = useState<string | null>(null);
 
     const { data: organizerOptions = [] } = useQuery<Organizer[]>({
         queryKey: ['organizers'],
         queryFn: () => getOrganizers(1, 100),
-        enabled: status,
+        enabled: open,
     });
 
-    const buildUpdatePayload = (current: EventsData, original?: EventsData) => {
-        if (!original) return null;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!open) return;
 
+        setFormData(
+            source
+                ? {
+                      ...source,
+                      onShelf: Boolean(source.onShelf),
+                      organizers: toOrganizerIds(source.organizers),
+                  }
+                : { ...emptyEventData },
+        );
+        setFormError(null);
+    }, [open, source]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    const isUpdating = Boolean(source);
+
+    const payloadForUpdate = useMemo(() => {
+        if (!source) return null;
+
+        const nextOrganizers = toOrganizerIds(formData.organizers).sort((a, b) => a - b);
+        const prevOrganizers = toOrganizerIds(source.organizers).sort((a, b) => a - b);
         const payload: Partial<Omit<EventsData, 'id' | 'eventCode'>> = {};
-        const currentOrganizers = toOrganizerIds(current.organizers).sort((a, b) => a - b);
-        const originalOrganizers = toOrganizerIds(original.organizers).sort((a, b) => a - b);
 
-        if (current.eventName !== original.eventName) payload.eventName = current.eventName;
-        if (current.eventType !== original.eventType) payload.eventType = current.eventType;
-        if (current.eventTime !== original.eventTime) payload.eventTime = current.eventTime;
-        if (current.city !== original.city) payload.city = current.city;
-        if (current.price !== original.price) payload.price = current.price;
-        if (current.stock !== original.stock) payload.stock = current.stock;
-        if (current.saleStartTime !== original.saleStartTime) {
-            payload.saleStartTime = current.saleStartTime;
-        }
-        if (current.saleEndTime !== original.saleEndTime) {
-            payload.saleEndTime = current.saleEndTime;
-        }
+        if (formData.eventName !== source.eventName) payload.eventName = formData.eventName;
+        if (formData.eventType !== source.eventType) payload.eventType = formData.eventType;
+        if (formData.eventTime !== source.eventTime) payload.eventTime = formData.eventTime;
+        if (formData.city !== source.city) payload.city = formData.city;
+        if (formData.price !== source.price) payload.price = formData.price;
+        if (formData.stock !== source.stock) payload.stock = formData.stock;
+        if (formData.saleStartTime !== source.saleStartTime) payload.saleStartTime = formData.saleStartTime;
+        if (formData.saleEndTime !== source.saleEndTime) payload.saleEndTime = formData.saleEndTime;
+        if (formData.onShelf !== source.onShelf) payload.onShelf = formData.onShelf;
         if (
-            currentOrganizers.length !== originalOrganizers.length ||
-            currentOrganizers.some((item, index) => item !== originalOrganizers[index])
+            nextOrganizers.length !== prevOrganizers.length ||
+            nextOrganizers.some((value, index) => value !== prevOrganizers[index])
         ) {
-            payload.organizers = currentOrganizers;
+            payload.organizers = nextOrganizers;
         }
-        if (current.onShelf !== original.onShelf) payload.onShelf = current.onShelf;
 
-        return Object.keys(payload).length > 0 ? payload : null;
-    };
+        return payload;
+    }, [formData, source]);
 
-    const saveEventMutation = useMutation({
-        mutationFn: async (payload: EventsData | Partial<Omit<EventsData, 'id' | 'eventCode'>>) => {
-            if (toUpData) {
-                if (!upData?.id) throw new Error('缺少票务 id，无法更新');
-                return upDataEvent(
-                    upData.id,
-                    payload as Partial<Omit<EventsData, 'id' | 'eventCode'>>,
-                );
+    const saveMutation = useMutation({
+        mutationFn: async () => {
+            if (isUpdating) {
+                if (!source?.id) throw new Error('缺少票务 id');
+                if (!payloadForUpdate || Object.keys(payloadForUpdate).length === 0) {
+                    throw new Error('未检测到修改内容');
+                }
+                return upDataEvent(source.id, payloadForUpdate);
             }
 
-            return createEvent(payload as EventsData);
+            return createEvent(formData);
         },
-        onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['events'] });
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['merchant-events'] });
+            onOpenChange(false);
         },
     });
 
-    const createChangeEvent = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const selectedOrganizers = toOrganizerIds(formData.organizers);
 
-        const payload = toUpData ? buildUpdatePayload(eventData, upData) : eventData;
-
-        if (toUpData && !payload) {
-            alert('未检测到修改内容');
-            return;
-        }
-        await saveEventMutation.mutateAsync(
-            payload as EventsData | Partial<Omit<EventsData, 'id' | 'eventCode'>>,
-        );
-        alert(toUpData ? '更改成功！' : '创建成功！');
-
-        onClosed();
-        setEventData({ ...emptyEventData });
-        setIsDropdownOpen(false);
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-
-        setEventData((prev) => ({
-            ...prev,
-            [name]:
-                name === 'price' || name === 'stock'
-                    ? value === ''
-                        ? null
-                        : Number(value)
-                    : value,
-        }));
-    };
-
-    const toggleOnShelf = () => {
-        setEventData((prev) => ({
-            ...prev,
-            onShelf: !prev.onShelf,
-        }));
-    };
-
-    const toggleOrganizer = (idNum: number | null | undefined) => {
-        if (idNum === null || idNum === undefined || Number.isNaN(idNum)) return;
-
-        setEventData((prev) => {
-            const currentSelected = toOrganizerIds(prev.organizers);
-            const nextSelected = currentSelected.includes(idNum)
-                ? currentSelected.filter((orgId) => orgId !== idNum)
-                : [...currentSelected, idNum];
-
-            return { ...prev, organizers: nextSelected };
+    const toggleOrganizer = (id: number) => {
+        setFormData((current) => {
+            const selected = toOrganizerIds(current.organizers);
+            const next = selected.includes(id)
+                ? selected.filter((item) => item !== id)
+                : [...selected, id];
+            return { ...current, organizers: next };
         });
     };
 
-    const selectedOrganizers = toOrganizerIds(eventData.organizers);
-    const selectedCount = selectedOrganizers.length;
-    const isOnShelf: boolean = !!eventData.onShelf;
+    const validate = () => {
+        if (!formData.eventName || !formData.eventType || !formData.eventTime || !formData.city) {
+            return '请完善票务基础信息';
+        }
+        if (!formData.saleStartTime || !formData.saleEndTime) {
+            return '请填写销售起止时间';
+        }
+        if (formData.stock < 0 || formData.price < 0) {
+            return '价格和库存不能为负数';
+        }
+        return null;
+    };
 
     return (
-        <AnimatePresence>
-            {status && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-                >
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                        className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl"
-                    >
-                        <div className="px-8 py-10">
-                            <h2 className="text-2xl font-bold text-white text-center mb-8">
-                                {toUpData ? '更新票务信息' : '新建票务信息'}
-                            </h2>
-                            <form
-                                className="grid grid-cols-2 gap-x-8 gap-y-5"
-                                onSubmit={createChangeEvent}
-                            >
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        票务名称
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="eventName"
-                                        value={eventData.eventName || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        上架状态
-                                    </label>
-                                    <div
-                                        className="w-full flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-[7px] transition-all hover:border-zinc-700 cursor-pointer"
-                                        onClick={toggleOnShelf}
-                                    >
-                                        <span
-                                            className={`text-sm select-none transition-colors ${
-                                                isOnShelf
-                                                    ? 'text-indigo-400 font-medium'
-                                                    : 'text-zinc-500'
-                                            }`}
-                                        >
-                                            {isOnShelf ? '已上架' : '暂不上架'}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={isOnShelf}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleOnShelf();
-                                            }}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
-                                                isOnShelf ? 'bg-indigo-600' : 'bg-zinc-700'
-                                            }`}
-                                        >
-                                            <span
-                                                aria-hidden="true"
-                                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${
-                                                    isOnShelf ? 'translate-x-5' : 'translate-x-0.5'
-                                                }`}
-                                            />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        票务类型（演出/赛事）
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="eventType"
-                                        value={eventData.eventType || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{isUpdating ? '编辑票务' : '创建票务'}</DialogTitle>
+                    <DialogDescription>请填写票务信息，保存后将自动刷新列表。</DialogDescription>
+                </DialogHeader>
 
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        举办时间
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        name="eventTime"
-                                        value={eventData.eventTime || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
+                {formError && (
+                    <Alert variant="destructive">
+                        <AlertTitle>保存失败</AlertTitle>
+                        <AlertDescription>{formError}</AlertDescription>
+                    </Alert>
+                )}
 
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        举办城市
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={eventData.city || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="eventName">票务名称</Label>
+                        <Input
+                            id="eventName"
+                            value={formData.eventName}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, eventName: e.target.value }))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="eventType">票务类型</Label>
+                        <Input
+                            id="eventType"
+                            value={formData.eventType}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, eventType: e.target.value }))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="eventTime">举办时间</Label>
+                        <Input
+                            id="eventTime"
+                            type="datetime-local"
+                            value={formData.eventTime}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, eventTime: e.target.value }))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="city">举办城市</Label>
+                        <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="price">票价</Label>
+                        <Input
+                            id="price"
+                            type="number"
+                            value={formData.price}
+                            onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, price: Number(e.target.value) }))
+                            }
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="stock">库存</Label>
+                        <Input
+                            id="stock"
+                            type="number"
+                            value={formData.stock}
+                            onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, stock: Number(e.target.value) }))
+                            }
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="saleStartTime">开售时间</Label>
+                        <Input
+                            id="saleStartTime"
+                            type="datetime-local"
+                            value={formData.saleStartTime}
+                            onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, saleStartTime: e.target.value }))
+                            }
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="saleEndTime">停售时间</Label>
+                        <Input
+                            id="saleEndTime"
+                            type="datetime-local"
+                            value={formData.saleEndTime}
+                            onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, saleEndTime: e.target.value }))
+                            }
+                        />
+                    </div>
 
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        单价
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="price"
-                                        value={eventData.price ?? ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        库存总量
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="stock"
-                                        value={eventData.stock ?? ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-
-                                <div className="relative">
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        主办方选择
-                                        {selectedCount > 0 && (
-                                            <span className="ml-2 text-indigo-400 normal-case tracking-normal">
-                                                (已选取 {selectedCount} 个)
-                                            </span>
-                                        )}
-                                    </label>
-
-                                    <div
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 flex items-center justify-between cursor-pointer transition-all hover:border-zinc-700"
-                                    >
-                                        <span
-                                            className={
-                                                selectedCount > 0
-                                                    ? 'text-zinc-100'
-                                                    : 'text-zinc-600'
-                                            }
-                                        >
-                                            {selectedCount > 0
-                                                ? `已选择 ${selectedCount} 个主办方`
-                                                : '点击选择主办方...'}
-                                        </span>
-                                        <svg
-                                            className={`w-4 h-4 text-zinc-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M19 9l-7 7-7-7"
-                                            />
-                                        </svg>
-                                    </div>
-                                    <AnimatePresence>
-                                        {isDropdownOpen && (
-                                            <>
-                                                <div
-                                                    className="fixed inset-0 z-10"
-                                                    onClick={() => setIsDropdownOpen(false)}
-                                                ></div>
-                                                <motion.div
-                                                    initial={{
-                                                        opacity: 0,
-                                                        y: -10,
-                                                        scale: 0.95,
-                                                    }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    transition={{
-                                                        duration: 0.15,
-                                                        ease: 'easeOut',
-                                                    }}
-                                                    className="absolute z-20 mt-2 w-full max-h-60 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl py-2 origin-top scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent"
-                                                >
-                                                    {organizerOptions.length === 0 ? (
-                                                        <div className="p-4 text-center text-sm text-zinc-500">
-                                                            加载中或暂无数据
-                                                        </div>
-                                                    ) : (
-                                                        organizerOptions.map((data) => {
-                                                            const idNum = Number(data.id);
-                                                            const isSelected =
-                                                                selectedOrganizers.includes(idNum);
-
-                                                            return (
-                                                                <div
-                                                                    key={data.id}
-                                                                    onClick={() =>
-                                                                        toggleOrganizer(data.id)
-                                                                    }
-                                                                    className={`px-4 py-2.5 flex items-center justify-between cursor-pointer transition-colors hover:bg-zinc-800 ${
-                                                                        isSelected
-                                                                            ? 'bg-indigo-600/10'
-                                                                            : ''
-                                                                    }`}
-                                                                >
-                                                                    <span
-                                                                        className={`text-sm ${isSelected ? 'text-indigo-400 font-bold' : 'text-zinc-300'}`}
-                                                                    >
-                                                                        {data.name}
-                                                                    </span>
-                                                                    {isSelected && (
-                                                                        <svg
-                                                                            className="w-4 h-4 text-indigo-500"
-                                                                            fill="none"
-                                                                            viewBox="0 0 24 24"
-                                                                            stroke="currentColor"
-                                                                        >
-                                                                            <path
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                strokeWidth="2"
-                                                                                d="M5 13l4 4L19 7"
-                                                                            />
-                                                                        </svg>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })
-                                                    )}
-                                                </motion.div>
-                                            </>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        销售开始时间
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        name="saleStartTime"
-                                        value={eventData.saleStartTime || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                        销售结束时间
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        name="saleEndTime"
-                                        value={eventData.saleEndTime || ''}
-                                        onChange={handleInputChange}
-                                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-                                <div className="col-span-2 pt-4">
-                                    <button
-                                        type="submit"
-                                        disabled={saveEventMutation.isPending}
-                                        className="w-full py-3 px-6 rounded-xl bg-linear-to-r from-indigo-600 to-violet-700 text-white font-bold hover:from-indigo-500 hover:to-violet-600 transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                                    >
-                                        {saveEventMutation.isPending
-                                            ? '提交中...'
-                                            : toUpData
-                                              ? '更新'
-                                              : '发布票务'}
-                                    </button>
-                                </div>
-                            </form>
+                    <div className="space-y-2 md:col-span-2">
+                        <div className="flex items-center justify-between rounded-md border p-3">
+                            <div>
+                                <Label htmlFor="onShelf">上架状态</Label>
+                                <p className="text-xs text-zinc-400">开启后活动将对用户可见</p>
+                            </div>
+                            <Switch
+                                id="onShelf"
+                                checked={Boolean(formData.onShelf)}
+                                onCheckedChange={(checked) =>
+                                    setFormData((prev) => ({ ...prev, onShelf: checked }))
+                                }
+                            />
                         </div>
-                        <button
-                            onClick={() => onClosed()}
-                            className="absolute right-6 top-8 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        >
-                            <svg
-                                className="h-6 w-6"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                        <Label>主办方</Label>
+                        <div className="flex flex-wrap gap-2 rounded-md border p-3">
+                            {organizerOptions.length === 0 && (
+                                <span className="text-sm text-zinc-400">暂无可选主办方</span>
+                            )}
+                            {organizerOptions.map((organizer) => {
+                                const organizerId = Number(organizer.id);
+                                const active = selectedOrganizers.includes(organizerId);
+                                return (
+                                    <Button
+                                        key={organizer.id}
+                                        type="button"
+                                        variant={active ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => toggleOrganizer(organizerId)}
+                                    >
+                                        {organizer.name}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        onClick={async () => {
+                            const message = validate();
+                            if (message) {
+                                setFormError(message);
+                                return;
+                            }
+
+                            try {
+                                setFormError(null);
+                                await saveMutation.mutateAsync();
+                            } catch (error) {
+                                setFormError(
+                                    error instanceof Error ? error.message : '提交失败，请稍后重试。',
+                                );
+                            }
+                        }}
+                        disabled={saveMutation.isPending}
+                    >
+                        {saveMutation.isPending ? '提交中...' : isUpdating ? '保存更新' : '创建票务'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

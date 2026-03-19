@@ -24,12 +24,25 @@ export const reviewMerchant = async (
     approved: boolean,
     rejectReason?: string,
 ): Promise<Merchant> => {
-    const response = await request.post('/api/merchants/review', {
+    const response = await request.post('/merchants/review', {
         merchantPhoneNumber,
         approved,
         rejectReason,
     });
     return response.data;
+};
+
+export const getMerchantById = async (id: number): Promise<Merchant> => {
+    const response = await request.get(`/merchants/${id}`);
+    return response.data ?? response;
+};
+
+export const patchMerchantById = async (
+    id: number,
+    payload: Partial<Pick<Merchant, 'phoneNumber' | 'username'> & { password: string }>,
+): Promise<Merchant> => {
+    const response = await request.patch(`/merchants/${id}`, payload);
+    return response.data ?? response;
 };
 
 export const importMerchants = async (file: File) => {

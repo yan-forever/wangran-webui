@@ -1,12 +1,26 @@
 import '../App.css';
-import * as React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import request from '../api/axios.ts';
-import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
-import useHeartCheck from '../lib/heartCheck.ts';
-import { Button } from '@/components/ui/button.tsx';
+import { Login, Register } from '@/api/auth.ts';
+import { useAuth } from '@/hooks/useAuth.tsx';
+import useHeartCheck from '@/lib/heartCheck.ts';
+import type { Merchant } from '@/types/merchants.ts';
+import type { User } from '@/types/users.ts';
+import {
+    Button,
+    Card,
+    CardContent,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    Input,
+    Label,
+    Separator,
+    Switch,
+} from '@/components/ui';
 
 function Header() {
     const [isAuthPanel, setAuthPanel] = useState(false);
@@ -20,78 +34,67 @@ function Header() {
             <header className="relative top-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/10">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-baseline gap-1.5 cursor-pointer group select-none">
-                        <button
+                        <Button
                             onClick={() => navigate('/')}
-                            className="text-2xl font-black tracking-tight text-white group-hover:text-gray-200 transition-colors"
+                            variant="ghost"
+                            className="h-auto px-0 py-0 text-2xl font-black tracking-tight text-white group-hover:text-gray-200"
                         >
                             望冉
-                        </button>
+                        </Button>
                         <span className="bg-linear-to-br from-indigo-400 to-violet-500 bg-clip-text text-lg font-extrabold text-transparent">
                             webui
                         </span>
                         <span
                             className={`h-2 w-2 rounded-full ml-0.5 mb-1 animate-pulse transition-colors duration-300 ${
                                 serverState
-                                    ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]' // 在线：靛蓝色 + 发光
-                                    : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' // 离线：红色 + 发光
+                                    ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]'
+                                    : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                             }`}
                             title={serverState ? '服务运行正常' : '服务已断开连接'}
                         ></span>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* TODO搜索系统 */}
                         <Button variant="default">Click me</Button>
 
                         {isAuthenticated ? (
-                            <>
-                                <div className="relative inline-block text-left">
-                                    <button
-                                        onClick={() => setMenuOpen(!isMenuOpen)}
-                                        className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95 flex items-center gap-1.5"
-                                    >
-                                        我的
-                                        <svg
-                                            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`}
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M19 9l-7 7-7-7"
-                                            />
-                                        </svg>
-                                    </button>
-                                    <AnimatePresence>
-                                        {isMenuOpen && (
-                                            <>
-                                                <div
-                                                    className="fixed inset-0 z-40"
-                                                    onClick={() => setMenuOpen(false)}
-                                                ></div>
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    transition={{ duration: 0.15, ease: 'easeOut' }}
-                                                    className="absolute right-0 mt-2 w-48 rounded-2xl bg-zinc-900/90 backdrop-blur-xl border border-zinc-700 shadow-2xl z-50 py-2 origin-top-right"
-                                                >
-                                                    <button
-                                                        onClick={() => {
-                                                            navigate('/Me');
-                                                            setMenuOpen(false);
-                                                        }}
-                                                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
-                                                    >
-                                                        个人中心
-                                                    </button>
+                            <div className="relative inline-block text-left">
+                                <Button
+                                    onClick={() => setMenuOpen(!isMenuOpen)}
+                                    variant="outline"
+                                    className="rounded-full bg-zinc-800 border-zinc-700 px-5 text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600"
+                                >
+                                    我的
+                                </Button>
+                                <AnimatePresence>
+                                    {isMenuOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-40"
+                                                onClick={() => setMenuOpen(false)}
+                                            ></div>
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                className="absolute right-0 z-50 mt-2 w-52 origin-top-right"
+                                            >
+                                                <Card className="border-zinc-700 bg-zinc-900/95 py-2">
+                                                    <CardContent className="px-2">
+                                                        <Button
+                                                            onClick={() => {
+                                                                navigate('/Me');
+                                                                setMenuOpen(false);
+                                                            }}
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-zinc-200"
+                                                        >
+                                                            个人中心
+                                                        </Button>
 
-                                                    <div className="h-px w-full bg-zinc-800 my-1"></div>
+                                                        <Separator className="my-1 bg-zinc-800" />
 
-                                                    <div className="group relative w-full">
-                                                        <button
+                                                        <Button
                                                             onClick={() => {
                                                                 if (role === 'admin')
                                                                     navigate('/console/admin');
@@ -101,50 +104,53 @@ function Header() {
                                                                     navigate('/console/user');
                                                                 setMenuOpen(false);
                                                             }}
-                                                            className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex justify-between items-center"
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-zinc-200"
                                                         >
                                                             {role == 'user' ? '订单' : '控制台'}
-                                                        </button>
-                                                    </div>
+                                                        </Button>
 
-                                                    <div className="h-px w-full bg-zinc-800 my-1"></div>
+                                                        <Separator className="my-1 bg-zinc-800" />
 
-                                                    <button
-                                                        onClick={() => {
-                                                            logout();
-                                                            navigate('/');
-                                                            setMenuOpen(false);
-                                                        }}
-                                                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex justify-between items-center text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                                                    >
-                                                        退出登录
-                                                    </button>
-                                                </motion.div>
-                                            </>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </>
+                                                        <Button
+                                                            onClick={() => {
+                                                                logout();
+                                                                navigate('/');
+                                                                setMenuOpen(false);
+                                                            }}
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                                        >
+                                                            退出登录
+                                                        </Button>
+                                                    </CardContent>
+                                                </Card>
+                                            </motion.div>
+                                        </>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         ) : (
                             <>
-                                <button
+                                <Button
                                     onClick={() => {
                                         setAuthMode(true);
                                         setAuthPanel(true);
                                     }}
-                                    className="rounded-full bg-zinc-800 border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-100 transition-all duration-200 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95"
+                                    variant="outline"
+                                    className="rounded-full bg-zinc-800 border-zinc-700 px-5 text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600"
                                 >
                                     登录
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     onClick={() => {
                                         setAuthMode(false);
                                         setAuthPanel(true);
                                     }}
-                                    className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black transition-all duration-200 hover:bg-gray-200 shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95"
+                                    className="rounded-full px-5 font-bold"
                                 >
                                     注册
-                                </button>
+                                </Button>
                             </>
                         )}
                     </div>
@@ -169,50 +175,17 @@ export function AuthPanel({
     authMode: boolean;
 }) {
     return (
-        <AnimatePresence>
-            //TODO理解遮罩控件的原理
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-                    //onClick={onClose}//取消点击ui外的遮罩关闭
-                >
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                        className="relative w-full max-w-md overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="h-1.5 w-full bg-linear-to-r from-indigo-500 to-violet-600"></div>
-
-                        <AuthFormContent initialMode={authMode} onClose={onClose} />
-                        {/* 关闭按钮 */}
-                        <button
-                            onClick={onClose}
-                            className="absolute right-4 top-6 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        >
-                            <svg
-                                className="h-6 w-6"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-md border-zinc-800 bg-zinc-950" showCloseButton={true}>
+                <DialogHeader>
+                    <DialogTitle className="text-zinc-100">
+                        {authMode ? '登录望冉' : '注册望冉'}
+                    </DialogTitle>
+                    <DialogDescription>立即订票</DialogDescription>
+                </DialogHeader>
+                <AuthFormContent initialMode={authMode} onClose={onClose} />
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -223,152 +196,124 @@ function AuthFormContent({ initialMode, onClose }: { initialMode: boolean; onClo
     const [tel, setTel] = useState('');
     const [isMerchant, setIsMerchant] = useState(false);
     const { login } = useAuth();
-    const handleSubmitL = async (e: React.BaseSyntheticEvent) => {
+    type LoginPayload = {
+        token?: string;
+        account?: User | Merchant | null;
+    };
+
+    useEffect(() => {
+        setMode(initialMode);
+        setIdentifier('');
+        setPassword('');
+        setTel('');
+        setIsMerchant(false);
+    }, [initialMode]);
+
+    const handleSubmitL = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (identifier.length > 50) return console.log('登录用户标识过长');
         if (password.length < 6 || password.length > 50) return console.log('登录密码过长或过短');
         try {
-            const response = await request.post('/auth/login', {
-                identifier: identifier,
-                password: password,
-            });
-            if (response.data) login(response.data.token, response.data.account);
+            const response = await Login(identifier, password);
+            const payload = ((response as { data?: LoginPayload })?.data ??
+                response) as LoginPayload;
+            if (payload?.token !== undefined) {
+                login(payload.token, payload.account ?? null);
+            }
             onClose();
         } catch (error) {
             console.error('错误：', error);
         }
     };
 
-    const handleSubmitR = async (e: React.BaseSyntheticEvent) => {
+    const handleSubmitR = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (tel.length < 11) return console.log('手机号错误');
         if (password.length < 6) return console.log('密码位数不足');
         try {
-            const response = await request.post('/auth/register', {
-                phoneNumber: tel,
-                password: password,
-                merchant: isMerchant,
-            });
+            await Register(tel, password, isMerchant);
             onClose();
         } catch (error) {
             console.error('错误', error);
         }
     };
     return (
-        <div className="px-8 py-10">
-            <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-white">{mode ? '望冉' : '加入望冉'}</h2>
-                <p className="mt-2 text-sm text-zinc-400">立即订票！</p>
-            </div>
-
-            {mode ? ( //TODO 输入信息错误时ui变红提示
-                /* ----------------- 登录表单 ----------------- */
+        <div className="space-y-6">
+            {mode ? (
                 <form className="space-y-5" onSubmit={handleSubmitL}>
-                    <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                            手机号或商户编号
-                        </label>
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="identifier">手机号或商户编号</Label>
+                        <Input
+                            id="identifier"
                             type="text"
                             placeholder="your account identifier"
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                         />
                     </div>
-                    <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                            密码
-                        </label>
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="password-login">密码</Label>
+                        <Input
+                            id="password-login"
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                         />
                     </div>
-                    <button
-                        type="submit"
-                        className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]"
-                    >
+                    <Button type="submit" className="w-full font-bold">
                         立即登陆
-                    </button>
+                    </Button>
                 </form>
             ) : (
-                /* ----------------- 注册表单 ----------------- */
                 <form className="space-y-5" onSubmit={handleSubmitR}>
-                    <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                            手机号
-                        </label>
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="register-phone">手机号</Label>
+                        <Input
+                            id="register-phone"
                             type="tel"
                             placeholder="your phone number"
                             value={tel}
                             onChange={(e) => setTel(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                         />
                     </div>
-                    <div>
-                        <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                            设置密码
-                        </label>
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="password-register">设置密码</Label>
+                        <Input
+                            id="password-register"
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <label
-                            className="relative flex items-center cursor-pointer select-none gap-3"
-                            htmlFor="ismerchant"
-                        >
-                            <input
-                                type="checkbox"
-                                id="ismerchant"
-                                checked={isMerchant}
-                                onChange={(e) => setIsMerchant(e.target.checked)}
-                                className="peer sr-only"
-                            />
-                            <span className="flex items-center justify-center w-5 h-5 border border-zinc-800 bg-zinc-900 rounded-lg transition-all duration-200 ease-out peer-checked:bg-indigo-600 peer-checked:border-indigo-600 peer-checked:shadow-[0_0_10px_rgba(99,102,241,0.5)]">
-                                <svg
-                                    className="w-3 h-3 text-white transition-transform duration-200 ease-out scale-0 peer-checked:scale-100"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            </span>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-white transition-colors">
-                                注册为商户
-                            </span>
-                        </label>
+                    <div className="flex items-center justify-between rounded-md border border-zinc-800 px-3 py-2">
+                        <Label htmlFor="ismerchant" className="cursor-pointer text-zinc-200">
+                            注册为商户
+                        </Label>
+                        <Switch
+                            id="ismerchant"
+                            checked={isMerchant}
+                            onCheckedChange={(checked) => setIsMerchant(Boolean(checked))}
+                        />
                     </div>
-                    <button
-                        type="submit"
-                        className="group relative w-full overflow-hidden rounded-xl bg-white py-3 font-bold text-black transition-all hover:bg-zinc-200 active:scale-[0.98]"
-                    >
+                    <Button type="submit" className="w-full font-bold">
                         立即创建账号
-                    </button>
+                    </Button>
                 </form>
             )}
 
-            <div className="mt-8 text-center text-sm text-zinc-500">
+            <Separator className="bg-zinc-800" />
+
+            <div className="text-center text-sm text-zinc-500">
                 {mode ? '没有账户？' : '已有账号？'}
-                <button
+                <Button
                     onClick={() => setMode(!mode)}
-                    className="ml-1 font-semibold text-indigo-400 hover:text-indigo-300"
+                    variant="link"
+                    className="ml-1 h-auto p-0 font-semibold text-indigo-400 hover:text-indigo-300"
                 >
                     {mode ? '去注册' : '去登录'}
-                </button>
+                </Button>
             </div>
         </div>
     );

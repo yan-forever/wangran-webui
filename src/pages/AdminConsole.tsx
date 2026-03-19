@@ -1,196 +1,214 @@
 import { useEffect, useState } from 'react';
-import request from '../api/axios.ts';
-import { useAuth } from '../hooks/useAuth.tsx';
 import { useNavigate } from 'react-router-dom';
+import { reviewMerchant } from '@/api/merchants.ts';
+import { createOrganizer as createOrganizerApi } from '@/api/organizers.ts';
+import { useAuth } from '@/hooks/useAuth.tsx';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Tabs,
+    TabsList,
+    TabsTrigger,
+    Textarea,
+} from '@/components/ui';
+
+type ReviewResult = 'true' | 'false' | '';
 
 function AdminConsole() {
-    const [merchantPhoneNumber, setMerchantPhoneNumber] = useState<string>('');
-    const [approved, setApproved] = useState<string>('');
-    const [rejectReason, setRejectReason] = useState<string>('');
     const { role, logout } = useAuth();
     const navigate = useNavigate();
+
+    const [merchantPhoneNumber, setMerchantPhoneNumber] = useState('');
+    const [approved, setApproved] = useState<ReviewResult>('');
+    const [rejectReason, setRejectReason] = useState('');
+    const [reviewPending, setReviewPending] = useState(false);
+
     const [organizer, setOrganizer] = useState({
         name: '',
         phoneNumber: '',
         address: '',
     });
-    const merchantsReview = async () => {
-        const response = await request.post('/merchants/review', {
-            merchantPhoneNumber: merchantPhoneNumber,
-            approved: approved,
-            rejectReason: rejectReason,
-        });
-        setMerchantPhoneNumber('');
-        setApproved('');
-        setApproved('');
-    };
-    const createOrganizer = async () => {
-        const response = await request.post('/organizers', {
-            name: organizer.name,
-            phoneNumber: organizer.phoneNumber,
-            address: organizer.address,
-        });
-        setOrganizer({
-            name: '',
-            phoneNumber: '',
-            address: '',
-        });
-    };
+    const [organizerPending, setOrganizerPending] = useState(false);
+    const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+        null,
+    );
+
     useEffect(() => {
-        if (role != 'admin') {
+        if (role !== 'admin') {
             logout();
             navigate('/');
         }
     }, [logout, navigate, role]);
 
+    const merchantsReview = async () => {
+        try {
+            setReviewPending(true);
+            setFeedback(null);
+            await reviewMerchant(
+                Number(merchantPhoneNumber),
+                approved === 'true',
+                approved === 'false' ? rejectReason : undefined,
+            );
+            setMerchantPhoneNumber('');
+            setApproved('');
+            setRejectReason('');
+            setFeedback({ type: 'success', message: '商户审核提交成功。' });
+        } catch {
+            setFeedback({ type: 'error', message: '商户审核提交失败，请稍后重试。' });
+        } finally {
+            setReviewPending(false);
+        }
+    };
+
+    const createOrganizer = async () => {
+        try {
+            setOrganizerPending(true);
+            setFeedback(null);
+            await createOrganizerApi(
+                organizer.name,
+                Number(organizer.phoneNumber),
+                organizer.address,
+            );
+            setOrganizer({ name: '', phoneNumber: '', address: '' });
+            setFeedback({ type: 'success', message: '主办方创建成功。' });
+        } catch {
+            setFeedback({ type: 'error', message: '主办方创建失败，请检查信息后重试。' });
+        } finally {
+            setOrganizerPending(false);
+        }
+    };
+
     return (
-        <div className="flex p-4">
-            <div className="audit-card">
-                <div className="p-8">
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-white">商户入驻审核</h2>
-                        <p className="mt-2 text-sm text-zinc-400">请核对商户信息并给出审核结论</p>
-                    </div>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                商户手机号
-                            </label>
-                            <input
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+            {feedback && (
+                <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
+                    <AlertTitle>{feedback.type === 'error' ? '操作失败' : '操作成功'}</AlertTitle>
+                    <AlertDescription>{feedback.message}</AlertDescription>
+                </Alert>
+            )}
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="border-zinc-800 bg-zinc-900/40">
+                    <CardHeader>
+                        <CardTitle className="text-zinc-100">商户入驻审核</CardTitle>
+                        <CardDescription>核对商户手机号并给出审核结论</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="merchantPhoneNumber">商户手机号</Label>
+                            <Input
+                                id="merchantPhoneNumber"
                                 type="tel"
-                                placeholder="请输入手机号"
                                 value={merchantPhoneNumber}
                                 onChange={(e) => setMerchantPhoneNumber(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                                placeholder="请输入手机号"
                             />
                         </div>
 
-                        <div>
-                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                审核结论
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setApproved('true')}
-                                    className={`py-3 rounded-xl font-bold border transition-all duration-200 ${
-                                        approved === 'true'
-                                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                                            : 'bg-zinc-950 text-zinc-500 border-zinc-800 hover:border-zinc-700'
-                                    }`}
-                                >
-                                    通过
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setApproved('false')}
-                                    className={`py-3 rounded-xl font-bold border transition-all duration-200 ${
-                                        approved === 'false'
-                                            ? 'bg-rose-500/10 border-rose-500 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.1)]'
-                                            : 'bg-zinc-950 text-zinc-500 border-zinc-800 hover:border-zinc-700'
-                                    }`}
-                                >
-                                    驳回
-                                </button>
-                            </div>
+                        <div className="space-y-2">
+                            <Label>审核结论</Label>
+                            <Tabs
+                                value={approved}
+                                onValueChange={(value) => setApproved(value as ReviewResult)}
+                            >
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="true">通过</TabsTrigger>
+                                    <TabsTrigger value="false">驳回</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
                         </div>
 
                         {approved === 'false' && (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                    驳回原因
-                                </label>
-                                <textarea
-                                    placeholder="若驳回，请说明理由..."
+                            <div className="space-y-2">
+                                <Label htmlFor="rejectReason">驳回原因</Label>
+                                <Textarea
+                                    id="rejectReason"
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
-                                    className="w-full h-28 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-rose-500 outline-none transition-all resize-none"
+                                    placeholder="若驳回，请说明理由"
+                                    className="min-h-24"
                                 />
                             </div>
                         )}
 
-                        <button
+                        <Button
                             type="button"
-                            onClick={() => merchantsReview()}
-                            disabled={!approved || !merchantPhoneNumber}
-                            className="group relative w-full overflow-hidden rounded-xl bg-white py-4 font-black text-black transition-all hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-30"
+                            onClick={() => void merchantsReview()}
+                            disabled={!approved || !merchantPhoneNumber || reviewPending}
+                            className="w-full"
                         >
-                            确认提交审核
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div className="audit-card">
-                <div className="p-8">
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-white">创建主办方</h2>
-                    </div>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                主办方名称
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="xxx"
-                                value={organizer.name || ''}
+                            {reviewPending ? '提交中...' : '确认提交审核'}
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-zinc-800 bg-zinc-900/40">
+                    <CardHeader>
+                        <CardTitle className="text-zinc-100">创建主办方</CardTitle>
+                        <CardDescription>新增主办方基础信息</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="organizerName">主办方名称</Label>
+                            <Input
+                                id="organizerName"
+                                value={organizer.name}
                                 onChange={(e) =>
-                                    setOrganizer((prev) => ({
-                                        ...prev,
-                                        name: e.target.value,
-                                    }))
+                                    setOrganizer((prev) => ({ ...prev, name: e.target.value }))
                                 }
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                                placeholder="例如: XXX 演出公司"
                             />
                         </div>
-                        <div>
-                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                主办方联系电话
-                            </label>
-                            <input
+                        <div className="space-y-2">
+                            <Label htmlFor="organizerPhone">联系电话</Label>
+                            <Input
+                                id="organizerPhone"
                                 type="tel"
-                                placeholder="phoneNumber"
-                                value={organizer.phoneNumber || ''}
+                                value={organizer.phoneNumber}
                                 onChange={(e) =>
                                     setOrganizer((prev) => ({
                                         ...prev,
                                         phoneNumber: e.target.value,
                                     }))
                                 }
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                                placeholder="请输入联系电话"
                             />
                         </div>
-                        <div>
-                            <label className="block mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                                主办方地址
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="address"
-                                value={organizer.address || ''}
+                        <div className="space-y-2">
+                            <Label htmlFor="organizerAddress">地址</Label>
+                            <Input
+                                id="organizerAddress"
+                                value={organizer.address}
                                 onChange={(e) =>
-                                    setOrganizer((prev) => ({
-                                        ...prev,
-                                        address: e.target.value,
-                                    }))
+                                    setOrganizer((prev) => ({ ...prev, address: e.target.value }))
                                 }
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:border-indigo-500 outline-none transition-all"
+                                placeholder="请输入地址"
                             />
                         </div>
-                        <button
+                        <Button
                             type="button"
-                            onClick={() => createOrganizer()}
+                            onClick={() => void createOrganizer()}
                             disabled={
-                                organizer.name === '' ||
-                                organizer.phoneNumber == '' ||
-                                organizer.address == ''
+                                !organizer.name ||
+                                !organizer.phoneNumber ||
+                                !organizer.address ||
+                                organizerPending
                             }
-                            className="group relative w-full overflow-hidden rounded-xl bg-white py-4 font-black text-black transition-all hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-30"
+                            className="w-full"
                         >
-                            确认创建
-                        </button>
-                    </div>
-                </div>
+                            {organizerPending ? '创建中...' : '确认创建'}
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

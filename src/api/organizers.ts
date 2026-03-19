@@ -19,7 +19,7 @@ export const createOrganizer = async (
     phoneNumber: number,
     address: string,
 ): Promise<Organizer> => {
-    const response = await request.post(`/api/organizers/`, {
+    const response = await request.post(`/organizers`, {
         name,
         phoneNumber,
         address,

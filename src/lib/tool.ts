@@ -1,48 +1,48 @@
 import type { EventsData } from '@/types/events.ts';
 import type { Organizer } from '@/types/organizers.ts';
 
-export const formatTime = (timeStr: string | null | undefined) => {
-    if (!timeStr) return '待定';
-    const date = new Date(timeStr);
-    return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
 };
 
-export const formatDate = (dateString: string | null) => {
-    if (!dateString) return '未知时间';
-    return new Date(dateString).toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+const formatLocaleDateTime = (
+    dateString: string | null | undefined,
+    fallback: string,
+    options: Intl.DateTimeFormatOptions,
+) => {
+    if (!dateString) return fallback;
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return fallback;
+    return date.toLocaleString('zh-CN', options);
 };
 
-export const formatDateShort = (dateStr: string | null) => {
-    if (!dateStr) return '时间待定';
-    return new Date(dateStr).toLocaleString('zh-CN', {
+export const formatDate = (dateString: string | null | undefined) =>
+    formatLocaleDateTime(dateString, '未知时间', DATE_TIME_OPTIONS);
+
+export const formatDateShort = (dateStr: string | null | undefined) =>
+    formatLocaleDateTime(dateStr, '时间待定', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
     });
-};
 
 export const formatToInstant = (timeStr: string | number | null) => {
-    if (!timeStr) return null;
+    if (timeStr === null || timeStr === undefined || timeStr === '') return null;
     // new Date 会自动把本地时间转换成标准的 UTC ISO-8601 格式
-    return new Date(timeStr as string).toISOString();
+    const date = new Date(timeStr);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
 };
 // UTC ISO字符串 → datetime-local 所需的本地时间格式
 export const formatToDatetimeLocal = (isoString: string | null | undefined): string => {
     if (!isoString) return '';
     const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -51,9 +51,6 @@ export const formatToDatetimeLocal = (isoString: string | null | undefined): str
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 type OrganizersUnion = number[] | Organizer[] | null;
-export const isNumberArray = (value: OrganizersUnion): value is number[] => {
-    return Array.isArray(value) && value.every((item) => typeof item === 'number');
-};
 export const isOrganizerArray = (value: OrganizersUnion): value is Organizer[] => {
     return (
         Array.isArray(value) &&

@@ -7,9 +7,14 @@ export const Login = async (identifier: string, password: string) => {
     });
 };
 
-export const Register = async (phoneNumber: string, password?: string) => {
+export const Register = async (
+    phoneNumber: string,
+    password?: string,
+    merchant: boolean = false,
+) => {
     return request.post(`/auth/register`, {
         phoneNumber,
         password,
+        merchant,
     });
 };
